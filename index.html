@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AECO Overstay Pro v5 | Real-Time Multi-User</title>
+  <title>AECO Overstay Pro v6 | Multi-User Real-Time</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -13,6 +13,7 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <style>
     :root { --accent:#2563eb; }
     * { box-sizing:border-box; }
@@ -140,9 +141,139 @@
     @keyframes livePulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 70%{box-shadow:0 0 0 6px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
     .update-flash { animation:flashRow .8s ease; }
     @keyframes flashRow { 0%{background:rgba(34,197,94,.25)} 100%{background:transparent} }
+    /* AUTH */
+    .auth-screen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#1e3a8a 0%,#1e1b4b 50%,#0f172a 100%);display:flex;align-items:center;justify-content:center;}
+    .auth-card{background:white;border-radius:1.5rem;box-shadow:0 25px 60px rgba(0,0,0,.4);width:100%;max-width:430px;margin:1rem;overflow:hidden;}
+    .dark .auth-card{background:#18181b;}
+    .auth-header{background:linear-gradient(135deg,#2563eb,#7c3aed);padding:1.75rem 2rem;text-align:center;}
+    .auth-input{width:100%;border:1.5px solid #e4e4e7;border-radius:.75rem;padding:.75rem 1rem;font-size:.875rem;transition:.15s;outline:none;box-sizing:border-box;}
+    .auth-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+    .dark .auth-input{background:#27272a;border-color:#3f3f46;color:white;}
+    .auth-btn{width:100%;padding:.85rem;border-radius:.75rem;font-weight:700;font-size:.88rem;cursor:pointer;transition:.15s;border:none;font-family:inherit;}
+    .auth-btn-primary{background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;}
+    .auth-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+    .auth-btn-secondary{background:#f4f4f5;color:#3f3f46;margin-top:.5rem;}
+    .dark .auth-btn-secondary{background:#27272a;color:#a1a1aa;}
+    /* ONLINE BAR */
+    .online-bar{background:white;border-bottom:1px solid #e4e4e7;padding:.55rem 1.25rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;position:sticky;top:0;z-index:40;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+    .dark .online-bar{background:#18181b;border-bottom-color:#27272a;}
+    .user-avatar{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;color:white;position:relative;flex-shrink:0;cursor:default;}
+    .u-online-ring{position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;border:2px solid white;background:#22c55e;}
+    .u-offline-ring{position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;border:2px solid white;background:#a1a1aa;}
+    /* ROLE BADGES */
+    .role-admin{background:#fde8ff;color:#701a75;padding:.15rem .55rem;border-radius:9999px;font-size:.63rem;font-weight:700;}
+    .role-editor{background:#dbeafe;color:#1e40af;padding:.15rem .55rem;border-radius:9999px;font-size:.63rem;font-weight:700;}
+    .role-viewer{background:#f4f4f5;color:#52525b;padding:.15rem .55rem;border-radius:9999px;font-size:.63rem;font-weight:700;}
+    .dark .role-admin{background:#4a044e;color:#f0abfc;}
+    .dark .role-editor{background:#1e3a5f;color:#93c5fd;}
+    .dark .role-viewer{background:#27272a;color:#a1a1aa;}
+    /* LAST UPDATED */
+    .last-update-pill{font-size:.68rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;padding:.18rem .6rem;border-radius:9999px;font-weight:600;}
+    .dark .last-update-pill{background:#052e16;color:#86efac;border-color:#14532d;}
+    /* NOTIF */
+    .notif-item{border-left:3px solid transparent;transition:.15s;}
+    .notif-item:hover{background:rgba(37,99,235,.05);}
+    .notif-critical{border-left-color:#ef4444;}
+    .notif-warning{border-left-color:#f59e0b;}
+    .notif-info{border-left-color:#3b82f6;}
   </style>
 </head>
 <body class="bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+
+<!-- ==================== SETUP WIZARD ==================== -->
+<div id="setupWizard" class="auth-screen hidden">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <i class="fas fa-fire text-white text-2xl"></i>
+      </div>
+      <h2 class="text-white font-display font-bold text-xl">First Time Setup</h2>
+      <p class="text-white/70 text-xs mt-1">Connect your Firebase database — takes 2 minutes</p>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs text-orange-800">
+        <p class="font-bold mb-1.5">📋 Before you start, in Firebase Console:</p>
+        <ol class="list-decimal ml-4 space-y-1">
+          <li>Go to <strong>console.firebase.google.com</strong> → your project</li>
+          <li><strong>Realtime Database</strong> → copy the URL shown at top</li>
+          <li><strong>Authentication</strong> → Sign-in method → enable <strong>Email/Password</strong></li>
+        </ol>
+      </div>
+      <div>
+        <label class="block text-xs font-bold mb-1.5 text-zinc-700">Firebase Database URL <span class="text-red-500">*</span></label>
+        <input id="wizardFbUrl" type="url" class="auth-input" placeholder="https://your-project-default-rtdb.firebaseio.com">
+      </div>
+      <div id="wizardMsg" class="hidden text-xs p-2.5 rounded-lg"></div>
+      <button class="auth-btn auth-btn-primary" onclick="wizardConnect()">
+        <i class="fas fa-plug mr-2"></i> Test & Connect
+      </button>
+      <p class="text-center text-xs text-zinc-400 mt-2">This is a one-time setup. Other users don't need to do this.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LOGIN SCREEN ==================== -->
+<div id="loginScreen" class="auth-screen hidden">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <i class="fa-solid fa-oil-can text-white text-2xl"></i>
+      </div>
+      <h2 class="text-white font-display font-bold text-xl">AECO Overstay Pro</h2>
+      <p class="text-white/70 text-xs mt-1">Sign in to access the system</p>
+    </div>
+    <div class="p-6">
+      <!-- Login form -->
+      <div id="loginForm">
+        <div class="space-y-3 mb-4">
+          <input id="loginEmail" type="email" class="auth-input" placeholder="Email address">
+          <div class="relative">
+            <input id="loginPassword" type="password" class="auth-input pr-10" placeholder="Password">
+            <button type="button" onclick="togglePwd('loginPassword',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"><i class="fas fa-eye text-xs"></i></button>
+          </div>
+        </div>
+        <div id="loginMsg" class="hidden text-xs p-2.5 rounded-lg mb-3"></div>
+        <button class="auth-btn auth-btn-primary" onclick="doLogin()"><i class="fas fa-sign-in-alt mr-2"></i> Sign In</button>
+        <button class="auth-btn auth-btn-secondary" onclick="showRegister()">Create New Account</button>
+      </div>
+      <!-- Register form -->
+      <div id="registerForm" class="hidden">
+        <div class="space-y-3 mb-4">
+          <input id="regName" type="text" class="auth-input" placeholder="Full Name">
+          <input id="regEmail" type="email" class="auth-input" placeholder="Email address">
+          <div class="relative">
+            <input id="regPassword" type="password" class="auth-input pr-10" placeholder="Password (min 6 characters)">
+            <button type="button" onclick="togglePwd('regPassword',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"><i class="fas fa-eye text-xs"></i></button>
+          </div>
+        </div>
+        <div id="regMsg" class="hidden text-xs p-2.5 rounded-lg mb-3"></div>
+        <button class="auth-btn auth-btn-primary" onclick="doRegister()"><i class="fas fa-user-plus mr-2"></i> Create Account</button>
+        <button class="auth-btn auth-btn-secondary" onclick="showLogin()">← Back to Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ONLINE USERS BAR ==================== -->
+<div id="onlineBar" class="online-bar hidden no-print">
+  <div class="flex items-center gap-1.5 shrink-0">
+    <i class="fas fa-users text-xs text-zinc-400"></i>
+    <span class="text-xs font-bold text-zinc-500 uppercase tracking-wide">Online</span>
+  </div>
+  <div id="onlineUsersContainer" class="flex items-center gap-1.5 flex-wrap"></div>
+  <div class="ml-auto flex items-center gap-3">
+    <span id="lastUpdatePill" class="last-update-pill hidden"><i class="fas fa-clock mr-1"></i><span id="lastUpdateText">—</span></span>
+    <span id="currentUserBadge" class="text-xs text-zinc-400 flex items-center gap-1.5">
+      <i class="fas fa-user-circle"></i>
+      <span id="currentUserName">—</span>
+      <span id="currentUserRole" class="role-viewer">viewer</span>
+    </span>
+    <button onclick="doLogout()" class="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1">
+      <i class="fas fa-sign-out-alt"></i> Logout
+    </button>
+  </div>
+</div>
+
 <div class="max-w-[1900px] mx-auto px-4 py-6">
 
   <!-- Header -->
@@ -152,7 +283,7 @@
         <span class="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
           <i class="fa-solid fa-oil-can text-white text-lg"></i>
         </span>
-        AECO Overstay Pro <span class="text-blue-500 text-lg font-normal ml-1">v5</span>
+        AECO Overstay Pro <span class="text-blue-500 text-lg font-normal ml-1">v6</span>
       </h1>
       <p class="text-zinc-500 dark:text-zinc-400 mt-1 ml-14 text-sm flex items-center gap-3">
         Rig Overstay Intelligence • Payment Tracking • AI Analytics
@@ -186,6 +317,7 @@
     <button id="tabInsights"    class="tab-btn px-5 py-3 whitespace-nowrap">🤖 AI Insights</button>
     <button id="tabNotifications" class="tab-btn px-5 py-3 whitespace-nowrap relative">🔔 Alerts <span id="notifTabBadge" class="hidden ml-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"></span></button>
     <button id="tabAudit"       class="tab-btn px-5 py-3 whitespace-nowrap">📝 Audit Log</button>
+    <button id="tabUsers"       class="tab-btn px-5 py-3 whitespace-nowrap hidden">👥 Users</button>
   </div>
 
   <!-- ==================== DASHBOARD PANEL ==================== -->
@@ -446,21 +578,16 @@
         <table class="min-w-full text-xs divide-y divide-zinc-200 dark:divide-zinc-700">
           <thead class="bg-zinc-50 dark:bg-zinc-950 sticky top-0 z-10">
             <tr>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Emp #</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Full Name</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Designation</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500 whitespace-nowrap">Emp #</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Name / Email</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Designation / Rotation</th>
               <th class="px-3 py-3 text-left font-semibold text-zinc-500">Rig</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Status</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Joining Date</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Civil ID</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Civil ID Expiry</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Passport</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Passport Expiry</th>
-              <th class="px-3 py-3 text-right font-semibold text-zinc-500">Basic</th>
-              <th class="px-3 py-3 text-right font-semibold text-zinc-500">Total</th>
-              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Email</th>
-              <th class="px-3 py-3 text-center font-semibold text-zinc-500">Overstays</th>
-              <th class="px-3 py-3 text-center font-semibold text-zinc-500">Total Days</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Status / Joined</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Civil ID / Expiry</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Passport / Expiry</th>
+              <th class="px-3 py-3 text-right font-semibold text-zinc-500">Salary</th>
+              <th class="px-3 py-3 text-center font-semibold text-zinc-500">OS Count</th>
+              <th class="px-3 py-3 text-center font-semibold text-zinc-500">OS Days</th>
               <th class="px-3 py-3 text-center font-semibold text-zinc-500 no-print">Actions</th>
             </tr>
           </thead>
@@ -752,6 +879,67 @@
         <div id="noAuditMsg" class="text-center py-12 text-zinc-400">
           <i class="fas fa-clipboard-list text-4xl mb-3 opacity-30"></i>
           <p>No audit entries yet. Actions on overstay records will be logged here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== USERS PANEL (Admin only) ==================== -->
+  <div id="usersPanel" class="panel-content hidden">
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5 mb-5">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="text-xl font-display font-bold flex items-center gap-2"><i class="fas fa-users-cog text-indigo-500"></i> User Management</h2>
+          <p class="text-xs text-zinc-400 mt-1">Manage access rights for all registered users</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="role-admin text-sm px-3 py-1.5">👑 Admin</span>
+          <span class="role-editor text-sm px-3 py-1.5">✏️ Editor</span>
+          <span class="role-viewer text-sm px-3 py-1.5">👁️ Viewer</span>
+        </div>
+      </div>
+    </div>
+    <!-- Role descriptions -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div class="bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-2xl p-4">
+        <p class="font-bold text-purple-700 dark:text-purple-300 text-sm flex items-center gap-2 mb-2"><i class="fas fa-crown"></i> Admin</p>
+        <ul class="text-xs text-purple-600 dark:text-purple-400 space-y-1">
+          <li>✓ View all data</li><li>✓ Add / Edit / Delete records</li><li>✓ Import &amp; Export</li><li>✓ Manage users &amp; roles</li><li>✓ All settings</li>
+        </ul>
+      </div>
+      <div class="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+        <p class="font-bold text-blue-700 dark:text-blue-300 text-sm flex items-center gap-2 mb-2"><i class="fas fa-edit"></i> Editor</p>
+        <ul class="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+          <li>✓ View all data</li><li>✓ Add &amp; Edit records</li><li>✓ Import &amp; Export</li><li>✗ Cannot delete records</li><li>✗ Cannot manage users</li>
+        </ul>
+      </div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl p-4">
+        <p class="font-bold text-zinc-700 dark:text-zinc-300 text-sm flex items-center gap-2 mb-2"><i class="fas fa-eye"></i> Viewer</p>
+        <ul class="text-xs text-zinc-600 dark:text-zinc-400 space-y-1">
+          <li>✓ View all data</li><li>✓ Export data</li><li>✗ Cannot add records</li><li>✗ Cannot edit records</li><li>✗ Cannot delete records</li>
+        </ul>
+      </div>
+    </div>
+    <!-- Users list -->
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs divide-y divide-zinc-200 dark:divide-zinc-700">
+          <thead class="bg-zinc-50 dark:bg-zinc-950 sticky top-0">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">User</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Email</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Role</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Status</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Last Seen</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Joined</th>
+              <th class="px-4 py-3 text-center font-semibold text-zinc-500 no-print">Change Role</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody" class="divide-y dark:divide-zinc-700"></tbody>
+        </table>
+        <div id="noUsersMsg" class="hidden text-center py-12 text-zinc-400">
+          <i class="fas fa-users text-4xl mb-3 opacity-30"></i>
+          <p>No users registered yet.</p>
         </div>
       </div>
     </div>
@@ -1235,23 +1423,81 @@ function renderEmployees(){
   let filtered=employeeMaster.filter(e=>{
     if(statusF!=='all'&&e.status!==statusF) return false;
     if(rigF!=='all'&&e.rig!==rigF) return false;
-    if(search){const hay=`${e.empId} ${e.name} ${e.position} ${e.rig} ${e.email}`.toLowerCase();if(!hay.includes(search)) return false;}
+    if(search){const hay=`${e.empId||''} ${e.name||''} ${e.position||''} ${e.rig||''} ${e.email||''} ${e.civilId||''}`.toLowerCase();if(!hay.includes(search)) return false;}
     return true;
   });
   document.getElementById('empCount').textContent=`${filtered.length} / ${employeeMaster.length} employees`;
   const overstayCount={},overstayDays={};
   overstayRecords.forEach(r=>{overstayCount[r.empId]=(overstayCount[r.empId]||0)+1;overstayDays[r.empId]=(overstayDays[r.empId]||0)+computeDays(r.startDate,r.endDate);});
-  const tbody=document.getElementById('employeeTableBody');tbody.innerHTML='';
+  const tbody=document.getElementById('employeeTableBody');
+  tbody.innerHTML='';
   const noMsg=document.getElementById('noEmpMsg');
-  if(!filtered.length){noMsg.classList.remove('hidden');return;}noMsg.classList.add('hidden');
-  filtered.forEach((e,fi)=>{
+  if(!filtered.length){noMsg.classList.remove('hidden');return;}
+  noMsg.classList.add('hidden');
+  const canEdit = currentUserRole==='admin'||currentUserRole==='editor';
+  const canDelete = currentUserRole==='admin';
+  filtered.forEach((e)=>{
     const globalIdx=employeeMaster.indexOf(e);
-    const row=tbody.insertRow();row.className='hover:bg-zinc-50 dark:hover:bg-zinc-800 transition';
-    const cnt=overstayCount[e.empId]||0,dys=overstayDays[e.empId]||0;
-    const ciExp=expiryClass(e.civilIdExpiry),ppExp=expiryClass(e.passportExpiry);
-    const ciIcon=ciExp==='exp-danger'?'<i class="fas fa-exclamation-circle text-red-500"></i>':ciExp==='exp-warn'?'<i class="fas fa-exclamation-triangle text-amber-400"></i>':'';
-    const ppIcon=ppExp==='exp-danger'?'<i class="fas fa-exclamation-circle text-red-500"></i>':ppExp==='exp-warn'?'<i class="fas fa-exclamation-triangle text-amber-400"></i>':'';
-    row.innerHTML=`<td class="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">${e.empId||'—'}</td><td class="px-3 py-2.5 font-semibold whitespace-nowrap max-w-[180px] truncate" title="${e.name}">${e.name}</td><td class="px-3 py-2.5 text-zinc-600 dark:text-zinc-400 max-w-[130px] truncate">${e.position||'—'}</td><td class="px-3 py-2.5"><span class="badge-rig">${e.rig||'—'}</span></td><td class="px-3 py-2.5"><span class="emp-badge ${getEmpStatusClass(e.status)}">${e.status||'—'}</span></td><td class="px-3 py-2.5 whitespace-nowrap text-zinc-500">${e.joiningDate||'—'}</td><td class="px-3 py-2.5 font-mono text-zinc-500 text-xs">${e.civilId||'—'}</td><td class="px-3 py-2.5 whitespace-nowrap ${ciExp}">${e.civilIdExpiry||'—'}${ciIcon}</td><td class="px-3 py-2.5 font-mono text-zinc-500 text-xs">${e.passportNo||'—'}</td><td class="px-3 py-2.5 whitespace-nowrap ${ppExp}">${e.passportExpiry||'—'}${ppIcon}</td><td class="px-3 py-2.5 text-right font-medium">${e.basicSalary?Number(e.basicSalary).toLocaleString():'—'}</td><td class="px-3 py-2.5 text-right font-semibold">${e.totalSalary?Number(e.totalSalary).toLocaleString():'—'}</td><td class="px-3 py-2.5 text-blue-600 dark:text-blue-400 text-xs max-w-[130px] truncate">${e.email||'—'}</td><td class="px-3 py-2.5 text-center"><span class="${cnt>0?'font-bold text-red-600':'text-zinc-400'}">${cnt||'—'}</span></td><td class="px-3 py-2.5 text-center"><span class="${dys>0?'font-bold text-orange-500':'text-zinc-400'}">${dys||'—'}</span></td><td class="px-3 py-2.5 text-center no-print space-x-2"><button onclick="editEmployee(${globalIdx})" class="text-blue-600 hover:text-blue-700" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteEmployee(${globalIdx})" class="text-red-600 hover:text-red-700" title="Delete"><i class="fas fa-trash"></i></button></td>`;
+    const cnt=overstayCount[e.empId]||0;
+    const dys=overstayDays[e.empId]||0;
+    const ciExp=expiryClass(e.civilIdExpiry);
+    const ppExp=expiryClass(e.passportExpiry);
+    const ciDays=daysUntil(e.civilIdExpiry);
+    const ppDays=daysUntil(e.passportExpiry);
+    const ciIcon=ciExp==='exp-danger'?'<i class="fas fa-exclamation-circle text-red-500 ml-1"></i>':ciExp==='exp-warn'?'<i class="fas fa-exclamation-triangle text-amber-400 ml-1"></i>':'<i class="fas fa-check-circle text-green-400 ml-1 opacity-50"></i>';
+    const ppIcon=ppExp==='exp-danger'?'<i class="fas fa-exclamation-circle text-red-500 ml-1"></i>':ppExp==='exp-warn'?'<i class="fas fa-exclamation-triangle text-amber-400 ml-1"></i>':'<i class="fas fa-check-circle text-green-400 ml-1 opacity-50"></i>';
+    const ciTitle=ciDays!==null?(ciDays<0?`Expired ${Math.abs(ciDays)} days ago`:`Expires in ${ciDays} days`):'';
+    const ppTitle=ppDays!==null?(ppDays<0?`Expired ${Math.abs(ppDays)} days ago`:`Expires in ${ppDays} days`):'';
+    const statusCls=getEmpStatusClass(e.status);
+    const salaryFmt=v=>v&&!isNaN(v)?Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}):'—';
+    const actionBtns=`
+      ${canEdit?`<button onclick="editEmployee(${globalIdx})" class="text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-950 transition" title="Edit"><i class="fas fa-edit"></i></button>`:''}
+      ${canDelete?`<button onclick="deleteEmployee(${globalIdx})" class="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950 transition" title="Delete"><i class="fas fa-trash"></i></button>`:''}
+    `;
+    const row=tbody.insertRow();
+    row.className='emp-row transition text-xs';
+    row.innerHTML=`
+      <td class="px-3 py-3">
+        <div class="font-mono text-zinc-500 text-xs">${e.empId||'—'}</div>
+        ${e.nameAr?`<div class="text-zinc-400 text-xs" dir="rtl">${e.nameAr}</div>`:''}
+      </td>
+      <td class="px-3 py-3">
+        <div class="font-semibold text-zinc-800 dark:text-zinc-100 max-w-[160px]" title="${e.name||''}">${e.name||'—'}</div>
+        <div class="text-zinc-400 text-xs mt-0.5">${e.email||''}</div>
+      </td>
+      <td class="px-3 py-3">
+        <div class="text-zinc-700 dark:text-zinc-300 max-w-[140px] truncate" title="${e.position||''}">${e.position||'—'}</div>
+        <div class="text-zinc-400 text-xs mt-0.5">${e.rotation||''}</div>
+      </td>
+      <td class="px-3 py-3"><span class="badge-rig">${e.rig||'—'}</span></td>
+      <td class="px-3 py-3">
+        <span class="emp-badge ${statusCls}">${e.status||'—'}</span>
+        <div class="text-zinc-400 text-xs mt-1">${e.joiningDate||''}</div>
+      </td>
+      <td class="px-3 py-3">
+        <div class="flex items-center ${ciExp}" title="${ciTitle}">
+          <span class="font-mono">${e.civilId||'—'}</span>${e.civilId?ciIcon:''}
+        </div>
+        <div class="text-xs mt-0.5 ${ciExp}">${e.civilIdExpiry||'—'}</div>
+      </td>
+      <td class="px-3 py-3">
+        <div class="flex items-center ${ppExp}" title="${ppTitle}">
+          <span class="font-mono">${e.passportNo||'—'}</span>${e.passportNo?ppIcon:''}
+        </div>
+        <div class="text-xs mt-0.5 ${ppExp}">${e.passportExpiry||'—'}</div>
+      </td>
+      <td class="px-3 py-3 text-right">
+        <div class="font-semibold text-zinc-700 dark:text-zinc-200">${salaryFmt(e.basicSalary)}</div>
+        <div class="text-zinc-400 text-xs mt-0.5">Total: ${salaryFmt(e.totalSalary)}</div>
+      </td>
+      <td class="px-3 py-3 text-center">
+        <span class="${cnt>0?'font-bold text-red-500 bg-red-50 dark:bg-red-950 px-2 py-0.5 rounded-full':'text-zinc-400'}">${cnt||'0'}</span>
+      </td>
+      <td class="px-3 py-3 text-center">
+        <span class="${dys>0?'font-bold text-orange-500 bg-orange-50 dark:bg-orange-950 px-2 py-0.5 rounded-full':'text-zinc-400'}">${dys||'0'}</span>
+      </td>
+      <td class="px-3 py-3 text-center no-print whitespace-nowrap">${actionBtns}</td>
+    `;
   });
 }
 function populateEmpFilters(){
@@ -2213,7 +2459,8 @@ document.getElementById('closeViewModalBtn').onclick=()=>{document.getElementByI
 // ==================== TABS ====================
 function switchTab(tab){
   document.querySelectorAll('.panel-content').forEach(p=>p.classList.add('hidden'));
-  document.getElementById(tab+'Panel').classList.remove('hidden');
+  const panel=document.getElementById(tab+'Panel');
+  if(panel)panel.classList.remove('hidden');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active-tab'));
   const tabEl=document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1));
   if(tabEl) tabEl.classList.add('active-tab');
@@ -2223,6 +2470,7 @@ function switchTab(tab){
   if(tab==='notifications') renderNotifications();
   if(tab==='audit') renderAuditLog();
   if(tab==='insights') renderAiQuickStats();
+  if(tab==='users') renderUsersPanel();
 }
 document.getElementById('tabDashboard').onclick=()=>switchTab('dashboard');
 document.getElementById('tabOverstay').onclick=()=>switchTab('overstay');
@@ -2338,23 +2586,9 @@ async function pullFromSheet() {
   }
 }
 
-// Auto-sync after every save
+// Auto-sync after every save (handled in Firebase v6 engine below)
 const _origSaveToLocalStorage = saveToLocalStorage;
-function saveToLocalStorage() {
-  localStorage.setItem('aeco_overstay_pro_v3', JSON.stringify(overstayRecords));
-  if (gsUrl && !syncInProgress) {
-    clearTimeout(window._syncTimer);
-    window._syncTimer = setTimeout(syncToSheet, 1500); // debounce 1.5s
-  }
-}
 const _origSaveEmployees = saveEmployees;
-function saveEmployees() {
-  localStorage.setItem('aeco_employees_v1', JSON.stringify(employeeMaster));
-  if (gsUrl && !syncInProgress) {
-    clearTimeout(window._syncTimer);
-    window._syncTimer = setTimeout(syncToSheet, 1500);
-  }
-}
 
 // Settings: wire up sheet buttons
 document.getElementById('settingsSheetUrl').addEventListener('input', function() {
@@ -2395,12 +2629,10 @@ document.getElementById('pullFromSheetBtn').addEventListener('click', async () =
 });
 
 // Patch Settings save to persist the URL
-const _origSaveSettings = saveSettings;
 function saveSettings() {
   settings.gsUrl = gsUrl;
   localStorage.setItem('aeco_settings', JSON.stringify(settings));
 }
-const _origLoadSettings = loadSettings;
 function loadSettings() {
   const s = localStorage.getItem('aeco_settings');
   if (s) { settings = { ...settings, ...JSON.parse(s) }; gsUrl = settings.gsUrl || ''; }
@@ -2408,186 +2640,354 @@ function loadSettings() {
 
 // ==================== END GOOGLE SHEETS ====================
 
-// ==================== FIREBASE REAL-TIME ENGINE ====================
-let firebaseDb       = null;
-let fbConnected      = false;
-let _fbWriting       = false;   // prevent our own writes from triggering the listener
-const _sessionId     = crypto.randomUUID();  // unique per browser tab
+// ==================== FIREBASE + AUTH + PRESENCE ENGINE v6 ====================
+let firebaseDb   = null;
+let firebaseAuth = null;
+let fbConnected  = false;
+let _fbWriting   = false;
+let currentUser  = null;
+let currentUserRole = 'viewer';
+const _sessionId = crypto.randomUUID();
+const AVATAR_COLORS = ['#2563eb','#7c3aed','#db2777','#059669','#d97706','#dc2626','#0891b2','#65a30d'];
 
-/* ---------- UI helpers ---------- */
-function setFbStatus(state, msg) {
-  const el   = document.getElementById('fbLiveIndicator');
-  const dot  = el.querySelector('.live-dot');
-  const text = document.getElementById('fbLiveText');
-  if (state === 'connected') {
-    el.className = 'fb-live connected';
-    dot.className = 'live-dot green';
-    text.textContent = msg || '🔴 LIVE';
-  } else if (state === 'connecting') {
-    el.className = 'fb-live connecting';
-    dot.className = 'live-dot yellow';
-    text.textContent = msg || 'Connecting…';
-  } else {
-    el.className = 'fb-live disconnected';
-    dot.className = 'live-dot red';
-    text.textContent = msg || 'Not Connected';
+// ─── UI helpers ───────────────────────────────────────────────────
+function setFbStatus(state, msg){
+  const el=document.getElementById('fbLiveIndicator');
+  const dot=el.querySelector('.live-dot');
+  const text=document.getElementById('fbLiveText');
+  if(state==='connected'){el.className='fb-live connected';dot.className='live-dot green';text.textContent=msg||'🔴 LIVE';}
+  else if(state==='connecting'){el.className='fb-live connecting';dot.className='live-dot yellow';text.textContent=msg||'Connecting…';}
+  else{el.className='fb-live disconnected';dot.className='live-dot red';text.textContent=msg||'Not Connected';}
+}
+function showFbMsg(text,ok=true){const el=document.getElementById('firebaseStatusMsg');el.className=`mt-2 text-xs ${ok?'text-green-600':'text-red-600'}`;el.textContent=text;el.classList.remove('hidden');}
+function showAuthMsg(id,text,ok=true){const el=document.getElementById(id);el.className=`text-xs p-2.5 rounded-lg mb-3 ${ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700'}`;el.textContent=text;el.classList.remove('hidden');}
+function togglePwd(id,btn){const inp=document.getElementById(id);inp.type=inp.type==='password'?'text':'password';btn.innerHTML=`<i class="fas fa-eye${inp.type==='text'?'-slash':''} text-xs"></i>`;}
+
+function avatarColor(name){let h=0;for(const c of(name||'?'))h=(h*31+c.charCodeAt(0))%AVATAR_COLORS.length;return AVATAR_COLORS[h];}
+function avatarInitials(name){if(!name)return '?';const p=name.trim().split(' ');return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():name.slice(0,2).toUpperCase();}
+
+// ─── Login/Register UI ────────────────────────────────────────────
+function showLogin(){document.getElementById('loginForm').classList.remove('hidden');document.getElementById('registerForm').classList.add('hidden');document.getElementById('loginMsg').classList.add('hidden');}
+function showRegister(){document.getElementById('registerForm').classList.remove('hidden');document.getElementById('loginForm').classList.add('hidden');document.getElementById('regMsg').classList.add('hidden');}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pwd=document.getElementById('loginPassword').value;
+  if(!email||!pwd){showAuthMsg('loginMsg','Please enter email and password',false);return;}
+  try{
+    document.getElementById('loginMsg').className='text-xs p-2.5 rounded-lg mb-3 bg-blue-50 text-blue-700';
+    document.getElementById('loginMsg').textContent='Signing in…';document.getElementById('loginMsg').classList.remove('hidden');
+    await firebaseAuth.signInWithEmailAndPassword(email,pwd);
+  }catch(e){showAuthMsg('loginMsg',e.code==='auth/user-not-found'?'No account found with this email':e.code==='auth/wrong-password'?'Incorrect password':e.message,false);}
+}
+async function doRegister(){
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pwd=document.getElementById('regPassword').value;
+  if(!name||!email||!pwd){showAuthMsg('regMsg','Please fill all fields',false);return;}
+  if(pwd.length<6){showAuthMsg('regMsg','Password must be at least 6 characters',false);return;}
+  try{
+    document.getElementById('regMsg').className='text-xs p-2.5 rounded-lg mb-3 bg-blue-50 text-blue-700';
+    document.getElementById('regMsg').textContent='Creating account…';document.getElementById('regMsg').classList.remove('hidden');
+    const cred=await firebaseAuth.createUserWithEmailAndPassword(email,pwd);
+    await cred.user.updateProfile({displayName:name});
+    // First user ever = admin, all others = viewer
+    const usersSnap=await firebaseDb.ref('users').once('value');
+    const isFirst=!usersSnap.exists()||(usersSnap.numChildren()===0);
+    await firebaseDb.ref(`users/${cred.user.uid}`).set({name,email,role:isFirst?'admin':'viewer',createdAt:Date.now(),lastLogin:Date.now()});
+  }catch(e){showAuthMsg('regMsg',e.code==='auth/email-already-in-use'?'Email already registered. Please sign in.':e.message,false);}
+}
+async function doLogout(){
+  if(!confirm('Sign out?'))return;
+  if(currentUser&&firebaseDb){await firebaseDb.ref(`presence/${currentUser.uid}`).update({online:false,lastSeen:Date.now()});}
+  await firebaseAuth.signOut();
+}
+
+// ─── Role enforcement ─────────────────────────────────────────────
+function applyRoleUI(role){
+  currentUserRole=role||'viewer';
+  const isAdmin=role==='admin';
+  const canEdit=isAdmin||role==='editor';
+  // Show/hide write buttons
+  ['addRecordBtn','importOverstayBtn','addEmpBtn','importEmpBtn','bulkApprove','bulkMarkPaid','bulkDelete','resetDataBtn'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.display=canEdit?'':'none';
+  });
+  // Delete/reset only for admin
+  ['resetDataBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isAdmin?'':'none';});
+  // Users tab only admin
+  const usersTab=document.getElementById('tabUsers');
+  if(usersTab)usersTab.classList.toggle('hidden',!isAdmin);
+  // Role badge in bar
+  const badge=document.getElementById('currentUserRole');
+  if(badge){badge.textContent=role;badge.className=`role-${role}`;}
+}
+
+// ─── Presence system ──────────────────────────────────────────────
+function setupPresence(user,name){
+  const presRef=firebaseDb.ref(`presence/${user.uid}`);
+  const myData={name,email:user.email,online:true,lastSeen:Date.now(),sessionId:_sessionId};
+  presRef.set(myData);
+  presRef.onDisconnect().update({online:false,lastSeen:Date.now()});
+
+  firebaseDb.ref('presence').on('value',snap=>{
+    const bar=document.getElementById('onlineUsersContainer');
+    if(!bar)return;
+    bar.innerHTML='';
+    const pres=snap.val()||{};
+    const onlineList=[],offlineList=[];
+    Object.entries(pres).forEach(([uid,p])=>{if(p.online)onlineList.push({uid,...p});else offlineList.push({uid,...p});});
+    // Online users (avatars)
+    onlineList.forEach(p=>{
+      const col=avatarColor(p.name);
+      const ini=avatarInitials(p.name);
+      const isMe=p.uid===user.uid;
+      bar.innerHTML+=`<div class="user-avatar" style="background:${col}" title="${p.name}${isMe?' (You)':''} — Online">
+        ${ini}<span class="u-online-ring"></span>
+      </div><span class="text-xs text-zinc-600 dark:text-zinc-300 font-medium">${p.name.split(' ')[0]}${isMe?' (You)':''}</span>`;
+    });
+    // Offline users (greyed)
+    offlineList.slice(0,3).forEach(p=>{
+      const lastSeen=p.lastSeen?dayjs(p.lastSeen).fromNow():'a while ago';
+      bar.innerHTML+=`<div class="user-avatar opacity-40" style="background:${avatarColor(p.name)}" title="${p.name} — Offline (${lastSeen})">
+        ${avatarInitials(p.name)}<span class="u-offline-ring"></span>
+      </div>`;
+    });
+    if(!bar.innerHTML)bar.innerHTML='<span class="text-xs text-zinc-400 italic">No other users online</span>';
+  });
+}
+
+// ─── Last Updated indicator ───────────────────────────────────────
+function setLastUpdated(by,at){
+  const pill=document.getElementById('lastUpdatePill');
+  const text=document.getElementById('lastUpdateText');
+  if(!pill||!text)return;
+  pill.classList.remove('hidden');
+  const time=at?dayjs(at).fromNow():'just now';
+  text.textContent=`Updated ${time} by ${by||'unknown'}`;
+}
+function recordUpdate(){
+  if(!firebaseDb||!currentUser)return;
+  firebaseDb.ref('meta/lastUpdate').set({by:currentUser.displayName||currentUser.email,at:Date.now()});
+}
+
+// ─── Users management (admin) ─────────────────────────────────────
+function renderUsersPanel(){
+  if(currentUserRole!=='admin')return;
+  const tbody=document.getElementById('usersTableBody');
+  const noMsg=document.getElementById('noUsersMsg');
+  if(!tbody)return;
+  firebaseDb.ref('users').once('value').then(snap=>{
+    const users=snap.val()||{};
+    const keys=Object.keys(users);
+    if(!keys.length){tbody.innerHTML='';noMsg.classList.remove('hidden');return;}
+    noMsg.classList.add('hidden');
+    firebaseDb.ref('presence').once('value').then(pSnap=>{
+      const pres=pSnap.val()||{};
+      tbody.innerHTML=keys.map(uid=>{
+        const u=users[uid];const p=pres[uid]||{};
+        const isOnline=p.online===true;
+        const roleCls=`role-${u.role||'viewer'}`;
+        const onlineDot=isOnline?'<span class="u-online-ring" style="position:static;display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;border:none;"></span>':'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a1a1aa;"></span>';
+        const lastSeen=u.lastLogin?dayjs(u.lastLogin).fromNow():'—';
+        const joined=u.createdAt?new Date(u.createdAt).toLocaleDateString():'—';
+        const isMe=currentUser&&uid===currentUser.uid;
+        return `<tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-xs">
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2">
+              <div class="user-avatar w-8 h-8 text-xs shrink-0" style="background:${avatarColor(u.name)};width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:700;">${avatarInitials(u.name)}</div>
+              <div>
+                <div class="font-semibold">${u.name||'—'}${isMe?' <span class="text-xs text-blue-500">(You)</span>':''}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-zinc-500">${u.email||'—'}</td>
+          <td class="px-4 py-3"><span class="${roleCls}">${u.role||'viewer'}</span></td>
+          <td class="px-4 py-3"><div class="flex items-center gap-1.5">${onlineDot}<span>${isOnline?'Online':'Offline'}</span></div></td>
+          <td class="px-4 py-3 text-zinc-400">${lastSeen}</td>
+          <td class="px-4 py-3 text-zinc-400">${joined}</td>
+          <td class="px-4 py-3 text-center no-print">
+            ${isMe?'<span class="text-zinc-300 text-xs">You</span>':`
+              <select onchange="changeUserRole('${uid}',this.value)" class="form-input py-1 text-xs w-28">
+                <option ${u.role==='admin'?'selected':''} value="admin">👑 Admin</option>
+                <option ${u.role==='editor'?'selected':''} value="editor">✏️ Editor</option>
+                <option ${u.role==='viewer'?'selected':''} value="viewer">👁️ Viewer</option>
+              </select>`}
+          </td>
+        </tr>`;
+      }).join('');
+    });
+  });
+}
+window.changeUserRole=function(uid,role){
+  if(!firebaseDb||currentUserRole!=='admin')return;
+  firebaseDb.ref(`users/${uid}/role`).set(role).then(()=>{
+    showToast(`Role updated to ${role} ✓`);
+    renderUsersPanel();
+  });
+};
+
+// ─── Auth state handler ───────────────────────────────────────────
+function onAuthStateChanged(user){
+  if(user){
+    currentUser=user;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('onlineBar').classList.remove('hidden');
+    document.getElementById('currentUserName').textContent=user.displayName||user.email;
+    // Load role
+    firebaseDb.ref(`users/${user.uid}`).on('value',snap=>{
+      const data=snap.val()||{};
+      currentUserRole=data.role||'viewer';
+      applyRoleUI(currentUserRole);
+      // Update last login
+      firebaseDb.ref(`users/${user.uid}/lastLogin`).set(Date.now());
+    });
+    // Setup presence
+    setupPresence(user,user.displayName||user.email);
+    // Listen for last update
+    firebaseDb.ref('meta/lastUpdate').on('value',snap=>{
+      const d=snap.val();if(d)setLastUpdated(d.by,d.at);
+    });
+    // Listen for role changes to current user
+    firebaseDb.ref(`users/${user.uid}/role`).on('value',snap=>{
+      if(snap.val())applyRoleUI(snap.val());
+    });
+  }else{
+    currentUser=null;
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('onlineBar').classList.add('hidden');
+    applyRoleUI('viewer');
   }
 }
 
-function showFbMsg(text, ok=true) {
-  const el = document.getElementById('firebaseStatusMsg');
-  el.className = `mt-2 text-xs ${ok ? 'text-green-600' : 'text-red-600'}`;
-  el.textContent = text;
-  el.classList.remove('hidden');
+// ─── Setup wizard ─────────────────────────────────────────────────
+async function wizardConnect(){
+  const url=document.getElementById('wizardFbUrl').value.trim();
+  const msg=document.getElementById('wizardMsg');
+  if(!url){msg.className='text-xs p-2.5 rounded-lg bg-red-50 text-red-700';msg.textContent='Please enter your Firebase Database URL';msg.classList.remove('hidden');return;}
+  msg.className='text-xs p-2.5 rounded-lg bg-blue-50 text-blue-700';msg.textContent='⏳ Testing connection…';msg.classList.remove('hidden');
+  try{
+    const res=await fetch(`${url.replace(/\/$/,'')}/.json?shallow=true`);
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    localStorage.setItem('aeco_firebase_url',url);
+    msg.className='text-xs p-2.5 rounded-lg bg-green-50 text-green-700';msg.textContent='✅ Connected! Loading app…';
+    setTimeout(()=>{document.getElementById('setupWizard').classList.add('hidden');initFirebase(url);},800);
+  }catch(e){msg.className='text-xs p-2.5 rounded-lg bg-red-50 text-red-700';msg.textContent='❌ Cannot reach Firebase. Check the URL and try again.';}
 }
 
-/* ---------- Init Firebase ---------- */
-function initFirebase(dbUrl) {
-  if (!dbUrl) return;
-  try {
-    // If already initialised, delete and re-init
-    if (firebase.apps.length) {
-      firebase.apps.forEach(app => app.delete());
-    }
-    firebase.initializeApp({ databaseURL: dbUrl });
-    firebaseDb = firebase.database();
+// ─── Init Firebase (full) ─────────────────────────────────────────
+function initFirebase(dbUrl){
+  if(!dbUrl)return;
+  try{
+    if(firebase.apps.length)firebase.apps.forEach(a=>a.delete());
+    firebase.initializeApp({databaseURL:dbUrl});
+    firebaseDb=firebase.database();
+    firebaseAuth=firebase.auth();
 
-    // Connection state listener
-    firebaseDb.ref('.info/connected').on('value', snap => {
-      fbConnected = snap.val() === true;
-      setFbStatus(fbConnected ? 'connected' : 'connecting',
-                  fbConnected ? `🔴 LIVE  •  Session ${_sessionId.slice(0,6)}` : 'Reconnecting…');
+    // Connection status
+    firebaseDb.ref('.info/connected').on('value',snap=>{
+      fbConnected=snap.val()===true;
+      setFbStatus(fbConnected?'connected':'connecting',fbConnected?`🔴 LIVE`:'Reconnecting…');
     });
 
-    // Real-time overstay listener
-    firebaseDb.ref('overstays').on('value', snap => {
-      if (_fbWriting) return;          // ignore our own write echo
-      const data = snap.val();
-      if (!data) return;
-      const incoming = Array.isArray(data) ? data : Object.values(data);
-      if (JSON.stringify(incoming) === JSON.stringify(overstayRecords)) return;
-      overstayRecords = incoming;
-      localStorage.setItem('aeco_overstay_pro_v3', JSON.stringify(overstayRecords));
-      refreshAll();
-      showToast('🔄 Overstay data updated by another user', 'warn');
+    // Real-time overstay listener (from other users)
+    firebaseDb.ref('overstays').on('value',snap=>{
+      if(_fbWriting)return;
+      const data=snap.val();if(!data)return;
+      const incoming=Array.isArray(data)?data:Object.values(data);
+      if(JSON.stringify(incoming)===JSON.stringify(overstayRecords))return;
+      overstayRecords=incoming;
+      localStorage.setItem('aeco_overstay_pro_v3',JSON.stringify(overstayRecords));
+      refreshAll();showToast('🔄 Records updated by another user','warn');
     });
 
     // Real-time employees listener
-    firebaseDb.ref('employees').on('value', snap => {
-      if (_fbWriting) return;
-      const data = snap.val();
-      if (!data) return;
-      const incoming = Array.isArray(data) ? data : Object.values(data);
-      if (JSON.stringify(incoming) === JSON.stringify(employeeMaster)) return;
-      employeeMaster = incoming;
-      localStorage.setItem('aeco_employees_v1', JSON.stringify(employeeMaster));
-      renderEmployees();
-      updateAutocompleteLists();
-      showToast('🔄 Employee data updated by another user', 'warn');
+    firebaseDb.ref('employees').on('value',snap=>{
+      if(_fbWriting)return;
+      const data=snap.val();if(!data)return;
+      const incoming=Array.isArray(data)?data:Object.values(data);
+      if(JSON.stringify(incoming)===JSON.stringify(employeeMaster))return;
+      employeeMaster=incoming;
+      localStorage.setItem('aeco_employees_v1',JSON.stringify(employeeMaster));
+      renderEmployees();updateAutocompleteLists();
+      showToast('🔄 Employees updated by another user','warn');
     });
 
+    // Auth state
+    firebaseAuth.onAuthStateChanged(onAuthStateChanged);
     setFbStatus('connecting');
-    console.log('Firebase initialised:', dbUrl);
-  } catch(e) {
-    setFbStatus('disconnected', 'Error — check URL');
-    console.error('Firebase init error:', e);
-  }
+  }catch(e){setFbStatus('disconnected','Error');console.error(e);}
 }
 
-/* ---------- Write to Firebase ---------- */
-function fbPush() {
-  if (!firebaseDb || !fbConnected) return;
-  _fbWriting = true;
-  const payload = {
-    overstays:  overstayRecords,
-    employees:  employeeMaster,
-    _by:        _sessionId,
-    _at:        Date.now()
-  };
+// ─── Write to Firebase ────────────────────────────────────────────
+function fbPush(){
+  if(!firebaseDb||!fbConnected)return;
+  _fbWriting=true;
+  recordUpdate();
   firebaseDb.ref('overstays').set(overstayRecords)
-    .then(() => firebaseDb.ref('employees').set(employeeMaster))
-    .then(() => {
-      setTimeout(() => { _fbWriting = false; }, 1500);
-    })
-    .catch(err => {
-      _fbWriting = false;
-      showToast('Firebase write error: ' + err.message, 'error');
-    });
+    .then(()=>firebaseDb.ref('employees').set(employeeMaster))
+    .then(()=>{setTimeout(()=>{_fbWriting=false;},1500);})
+    .catch(e=>{_fbWriting=false;showToast('Firebase error: '+e.message,'error');});
 }
 
-/* ---------- Patch save functions to also write to Firebase ---------- */
-const _baseSaveRecords   = saveToLocalStorage;
-const _baseSaveEmployees = saveEmployees;
-
-function saveToLocalStorage() {
-  localStorage.setItem('aeco_overstay_pro_v3', JSON.stringify(overstayRecords));
+// ─── Patch save functions ─────────────────────────────────────────
+function saveToLocalStorage(){
+  localStorage.setItem('aeco_overstay_pro_v3',JSON.stringify(overstayRecords));
   fbPush();
-  // GAS sync (debounced)
-  if (gsUrl && !syncInProgress) {
-    clearTimeout(window._syncTimer);
-    window._syncTimer = setTimeout(syncToSheet, 1500);
-  }
+  if(gsUrl&&!syncInProgress){clearTimeout(window._syncTimer);window._syncTimer=setTimeout(syncToSheet,1500);}
 }
-function saveEmployees() {
-  localStorage.setItem('aeco_employees_v1', JSON.stringify(employeeMaster));
+function saveEmployees(){
+  localStorage.setItem('aeco_employees_v1',JSON.stringify(employeeMaster));
   fbPush();
-  if (gsUrl && !syncInProgress) {
-    clearTimeout(window._syncTimer);
-    window._syncTimer = setTimeout(syncToSheet, 1500);
-  }
+  if(gsUrl&&!syncInProgress){clearTimeout(window._syncTimer);window._syncTimer=setTimeout(syncToSheet,1500);}
 }
 
-/* ---------- Settings UI wiring ---------- */
-document.getElementById('testFirebaseBtn').addEventListener('click', async () => {
-  const url = document.getElementById('settingsFirebaseUrl').value.trim();
-  if (!url) { showFbMsg('❌ Please enter a Firebase URL first', false); return; }
-  showFbMsg('⏳ Testing connection…', true);
-  try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/.json?shallow=true`);
-    if (res.ok) {
-      showFbMsg('✅ Connection successful! Firebase is reachable.', true);
-    } else {
-      showFbMsg(`❌ HTTP ${res.status} — check the URL or database rules`, false);
-    }
-  } catch(e) {
-    showFbMsg('❌ Could not reach Firebase — check URL', false);
-  }
+// ─── Settings UI ──────────────────────────────────────────────────
+document.getElementById('testFirebaseBtn').addEventListener('click',async()=>{
+  const url=document.getElementById('settingsFirebaseUrl').value.trim();
+  if(!url){showFbMsg('❌ Enter a Firebase URL first',false);return;}
+  showFbMsg('⏳ Testing…');
+  try{const r=await fetch(`${url.replace(/\/$/,'')}/.json?shallow=true`);r.ok?showFbMsg('✅ Connected successfully!'):showFbMsg(`❌ HTTP ${r.status}`,false);}
+  catch(e){showFbMsg('❌ Cannot reach Firebase',false);}
+});
+document.getElementById('saveFirebaseBtn').addEventListener('click',()=>{
+  const url=document.getElementById('settingsFirebaseUrl').value.trim();
+  if(!url){showFbMsg('❌ Enter URL first',false);return;}
+  localStorage.setItem('aeco_firebase_url',url);
+  initFirebase(url);showFbMsg('✅ Firebase connected!');showToast('🔥 Firebase live ✓');
+});
+document.getElementById('pushToFirebaseBtn').addEventListener('click',()=>{
+  if(!firebaseDb){showFbMsg('❌ Connect Firebase first',false);return;}
+  _fbWriting=false;fbPush();showFbMsg(`✅ Pushed ${overstayRecords.length} overstays + ${employeeMaster.length} employees`);
 });
 
-document.getElementById('saveFirebaseBtn').addEventListener('click', () => {
-  const url = document.getElementById('settingsFirebaseUrl').value.trim();
-  if (!url) { showFbMsg('❌ Please paste your Firebase Database URL', false); return; }
-  localStorage.setItem('aeco_firebase_url', url);
-  initFirebase(url);
-  showFbMsg('✅ Firebase connected! Real-time sync is active.', true);
-  showToast('🔥 Firebase connected — real-time sync ON ✓');
-});
+// ─── Users tab switch ─────────────────────────────────────────────
+document.getElementById('tabUsers').addEventListener('click',()=>{switchTab('users');renderUsersPanel();});
 
-document.getElementById('pushToFirebaseBtn').addEventListener('click', () => {
-  if (!firebaseDb) { showFbMsg('❌ Connect Firebase first', false); return; }
-  _fbWriting = false;  // force push regardless
-  fbPush();
-  showFbMsg(`✅ Pushed ${overstayRecords.length} overstays + ${employeeMaster.length} employees`, true);
-  showToast('📤 All data pushed to Firebase ✓');
-});
-
-/* ---------- Auto-load Firebase on startup ---------- */
-const _savedFbUrl = localStorage.getItem('aeco_firebase_url');
-if (_savedFbUrl) {
-  setFbStatus('connecting', 'Connecting…');
+// ─── Startup ──────────────────────────────────────────────────────
+const _savedFbUrl=localStorage.getItem('aeco_firebase_url');
+if(_savedFbUrl){
+  setFbStatus('connecting','Connecting…');
   initFirebase(_savedFbUrl);
-  // Pre-fill the settings field
-  setTimeout(() => {
-    const el = document.getElementById('settingsFirebaseUrl');
-    if (el) el.value = _savedFbUrl;
-  }, 100);
+  setTimeout(()=>{const el=document.getElementById('settingsFirebaseUrl');if(el)el.value=_savedFbUrl;},200);
+}else{
+  // First time — show setup wizard
+  document.getElementById('setupWizard').classList.remove('hidden');
+  document.getElementById('loginScreen').classList.add('hidden');
 }
 
-// ==================== END FIREBASE ====================
+// ─── dayjs fromNow plugin (inline) ────────────────────────────────
+(function(){const units=[{l:'s',r:44,p:'second'},{l:'m',r:89},{l:'mm',r:44,p:'minute'},{l:'h',r:89},{l:'hh',r:21,p:'hour'},{l:'d',r:35},{l:'dd',r:25,p:'day'},{l:'M',r:45},{l:'MM',r:10,p:'month'},{l:'y',r:17},{l:'yy',p:'year'}];dayjs.extend((o,c,d)=>{c.prototype.fromNow=function(){const diff=dayjs().diff(this,'second');if(diff<5)return 'just now';if(diff<60)return `${diff}s ago`;if(diff<3600)return `${Math.round(diff/60)}m ago`;if(diff<86400)return `${Math.round(diff/3600)}h ago`;return `${Math.round(diff/86400)}d ago`;};});})();
+
+// ─── Also wire switchTab for users ────────────────────────────────
+const _origSwitchTab=switchTab;
+
+// ==================== END FIREBASE v6 ====================
 
 loadSettings();loadGsUrl();loadGeminiKey();loadFromLocalStorage();loadEmployees();loadAuditLog();
 if(localStorage.getItem('aecoDarkMode')==='true'){document.documentElement.classList.add('dark');document.getElementById('darkModeText').textContent='Light';}
 if(gsUrl){document.getElementById('settingsSheetUrl').value=gsUrl;document.getElementById('syncStatusBtn').classList.remove('hidden');}
+// Show login screen initially (Firebase will hide it on auth)
+if(_savedFbUrl){document.getElementById('loginScreen').classList.remove('hidden');}
 refreshAll();switchTab('overstay');
 </script>
 </body>
