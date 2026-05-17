@@ -225,6 +225,11 @@
     <div class="p-6">
       <!-- Login form -->
       <div id="loginForm">
+        <!-- Firebase connection status shown on login screen -->
+        <div id="loginFbStatus" class="mb-3 text-xs p-2.5 rounded-lg bg-amber-50 text-amber-700 hidden">
+          <i class="fas fa-circle-notch fa-spin mr-1"></i> Connecting to Firebase…
+          <button onclick="retryFirebase()" class="ml-2 underline font-bold">Retry</button>
+        </div>
         <div class="space-y-3 mb-4">
           <input id="loginEmail" type="email" class="auth-input" placeholder="Email address">
           <div class="relative">
@@ -235,9 +240,17 @@
         <div id="loginMsg" class="hidden text-xs p-2.5 rounded-lg mb-3"></div>
         <button class="auth-btn auth-btn-primary" onclick="doLogin()"><i class="fas fa-sign-in-alt mr-2"></i> Sign In</button>
         <button class="auth-btn auth-btn-secondary" onclick="showRegister()">Create New Account</button>
+        <div class="mt-3 text-center">
+          <button onclick="clearFbAndResetup()" class="text-xs text-zinc-400 hover:text-zinc-600 underline">Change Firebase URL</button>
+        </div>
       </div>
       <!-- Register form -->
       <div id="registerForm" class="hidden">
+        <!-- Firebase connection status shown on register screen -->
+        <div id="regFbStatus" class="mb-3 text-xs p-2.5 rounded-lg bg-amber-50 text-amber-700 hidden">
+          <i class="fas fa-circle-notch fa-spin mr-1"></i> Connecting to Firebase…
+          <button onclick="retryFirebase()" class="ml-2 underline font-bold">Retry</button>
+        </div>
         <div class="space-y-3 mb-4">
           <input id="regName" type="text" class="auth-input" placeholder="Full Name">
           <input id="regEmail" type="email" class="auth-input" placeholder="Email address">
@@ -2671,18 +2684,32 @@ function showLogin(){document.getElementById('loginForm').classList.remove('hidd
 function showRegister(){document.getElementById('registerForm').classList.remove('hidden');document.getElementById('loginForm').classList.add('hidden');document.getElementById('regMsg').classList.add('hidden');}
 
 async function doLogin(){
-  if(!firebaseAuth){ showAuthMsg('loginMsg','⏳ Firebase is still connecting, please wait 3 seconds and try again.',false); return; }
+  if(!firebaseAuth){
+    showAuthMsg('loginMsg','Firebase not connected yet. Click Retry above.',false);
+    retryFirebase();
+    return;
+  }
   const email=document.getElementById('loginEmail').value.trim();
   const pwd=document.getElementById('loginPassword').value;
   if(!email||!pwd){showAuthMsg('loginMsg','Please enter email and password',false);return;}
   try{
     document.getElementById('loginMsg').className='text-xs p-2.5 rounded-lg mb-3 bg-blue-50 text-blue-700';
-    document.getElementById('loginMsg').textContent='Signing in…';document.getElementById('loginMsg').classList.remove('hidden');
+    document.getElementById('loginMsg').textContent='Signing in…';
+    document.getElementById('loginMsg').classList.remove('hidden');
     await firebaseAuth.signInWithEmailAndPassword(email,pwd);
-  }catch(e){showAuthMsg('loginMsg',e.code==='auth/user-not-found'?'No account found with this email':e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'?'Incorrect password':e.message,false);}
+  }catch(e){
+    const msg=e.code==='auth/user-not-found'?'No account found with this email':
+              e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'?'Incorrect password':
+              e.message;
+    showAuthMsg('loginMsg',msg,false);
+  }
 }
 async function doRegister(){
-  if(!firebaseAuth){ showAuthMsg('regMsg','⏳ Firebase is still connecting, please wait 3 seconds and try again.',false); return; }
+  if(!firebaseAuth){
+    showAuthMsg('regMsg','Firebase not connected yet. Click Retry above.',false);
+    retryFirebase();
+    return;
+  }
   const name=document.getElementById('regName').value.trim();
   const email=document.getElementById('regEmail').value.trim();
   const pwd=document.getElementById('regPassword').value;
@@ -2690,14 +2717,19 @@ async function doRegister(){
   if(pwd.length<6){showAuthMsg('regMsg','Password must be at least 6 characters',false);return;}
   try{
     document.getElementById('regMsg').className='text-xs p-2.5 rounded-lg mb-3 bg-blue-50 text-blue-700';
-    document.getElementById('regMsg').textContent='Creating account…';document.getElementById('regMsg').classList.remove('hidden');
+    document.getElementById('regMsg').textContent='Creating account…';
+    document.getElementById('regMsg').classList.remove('hidden');
     const cred=await firebaseAuth.createUserWithEmailAndPassword(email,pwd);
     await cred.user.updateProfile({displayName:name});
-    // First user ever = admin, all others = viewer
     const usersSnap=await firebaseDb.ref('users').once('value');
-    const isFirst=!usersSnap.exists()||(usersSnap.numChildren()===0);
-    await firebaseDb.ref(`users/${cred.user.uid}`).set({name,email,role:isFirst?'admin':'viewer',createdAt:Date.now(),lastLogin:Date.now()});
-  }catch(e){showAuthMsg('regMsg',e.code==='auth/email-already-in-use'?'Email already registered. Please sign in.':e.message,false);}
+    const isFirst=!usersSnap.exists()||usersSnap.numChildren()===0;
+    await firebaseDb.ref(`users/${cred.user.uid}`).set({
+      name,email,role:isFirst?'admin':'viewer',createdAt:Date.now(),lastLogin:Date.now()
+    });
+  }catch(e){
+    const msg=e.code==='auth/email-already-in-use'?'Email already registered — please sign in instead.':e.message;
+    showAuthMsg('regMsg',msg,false);
+  }
 }
 async function doLogout(){
   if(!confirm('Sign out?'))return;
@@ -2978,17 +3010,67 @@ document.getElementById('pushToFirebaseBtn').addEventListener('click',()=>{
 document.getElementById('tabUsers').addEventListener('click',()=>{switchTab('users');renderUsersPanel();});
 
 // ─── Startup ──────────────────────────────────────────────────────
+// ─── Retry & Reset helpers ────────────────────────────────────────
+function retryFirebase(){
+  const url=localStorage.getItem('aeco_firebase_url');
+  if(!url){ clearFbAndResetup(); return; }
+  ['loginFbStatus','regFbStatus'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-blue-50 text-blue-700'; el.innerHTML='<i class="fas fa-circle-notch fa-spin mr-1"></i> Retrying connection…'; el.classList.remove('hidden'); }
+  });
+  initFirebase(url);
+  // Check after 3s if auth loaded
+  setTimeout(()=>{
+    if(firebaseAuth){
+      ['loginFbStatus','regFbStatus'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-green-50 text-green-700'; el.innerHTML='✅ Connected! You can now sign in.'; }
+      });
+    } else {
+      ['loginFbStatus','regFbStatus'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-red-50 text-red-700'; el.innerHTML='❌ Still not connected. <button onclick="clearFbAndResetup()" class="underline font-bold ml-1">Re-enter Firebase URL</button>'; }
+      });
+    }
+  },3000);
+}
+function clearFbAndResetup(){
+  localStorage.removeItem('aeco_firebase_url');
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('setupWizard').classList.remove('hidden');
+}
+
+// ─── Startup ──────────────────────────────────────────────────────
 const _savedFbUrl=localStorage.getItem('aeco_firebase_url');
 if(_savedFbUrl){
-  // URL already saved - skip wizard, show login, connect Firebase
+  // URL already saved - show login immediately then connect Firebase
   document.getElementById('setupWizard').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
-  setFbStatus('connecting','Connecting…');
-  // Small delay so page renders first, then Firebase loads
-  setTimeout(()=>{ initFirebase(_savedFbUrl); }, 300);
+  // Show connecting status on login screen
+  ['loginFbStatus','regFbStatus'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.classList.remove('hidden'); }
+  });
+  // Initialize Firebase immediately (no delay)
+  initFirebase(_savedFbUrl);
+  // After 4 seconds check if connected and update status
+  setTimeout(()=>{
+    if(firebaseAuth){
+      ['loginFbStatus','regFbStatus'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-green-50 text-green-700'; el.innerHTML='✅ Firebase connected — ready to sign in.'; setTimeout(()=>el.classList.add('hidden'),2000); }
+      });
+    } else {
+      ['loginFbStatus','regFbStatus'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-red-50 text-red-700'; el.innerHTML='❌ Firebase not connected. <button onclick="retryFirebase()" class="underline font-bold ml-1">Retry</button> or <button onclick="clearFbAndResetup()" class="underline font-bold ml-1">Re-enter URL</button>'; }
+      });
+    }
+  },4000);
+  // Pre-fill settings field
   setTimeout(()=>{ const el=document.getElementById('settingsFirebaseUrl'); if(el) el.value=_savedFbUrl; },500);
 }else{
-  // First time - show setup wizard
+  // First time — show setup wizard
   document.getElementById('setupWizard').classList.remove('hidden');
   document.getElementById('loginScreen').classList.add('hidden');
 }
