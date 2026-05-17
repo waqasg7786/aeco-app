@@ -2671,6 +2671,7 @@ function showLogin(){document.getElementById('loginForm').classList.remove('hidd
 function showRegister(){document.getElementById('registerForm').classList.remove('hidden');document.getElementById('loginForm').classList.add('hidden');document.getElementById('regMsg').classList.add('hidden');}
 
 async function doLogin(){
+  if(!firebaseAuth){ showAuthMsg('loginMsg','⏳ Firebase is still connecting, please wait 3 seconds and try again.',false); return; }
   const email=document.getElementById('loginEmail').value.trim();
   const pwd=document.getElementById('loginPassword').value;
   if(!email||!pwd){showAuthMsg('loginMsg','Please enter email and password',false);return;}
@@ -2678,9 +2679,10 @@ async function doLogin(){
     document.getElementById('loginMsg').className='text-xs p-2.5 rounded-lg mb-3 bg-blue-50 text-blue-700';
     document.getElementById('loginMsg').textContent='Signing in…';document.getElementById('loginMsg').classList.remove('hidden');
     await firebaseAuth.signInWithEmailAndPassword(email,pwd);
-  }catch(e){showAuthMsg('loginMsg',e.code==='auth/user-not-found'?'No account found with this email':e.code==='auth/wrong-password'?'Incorrect password':e.message,false);}
+  }catch(e){showAuthMsg('loginMsg',e.code==='auth/user-not-found'?'No account found with this email':e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'?'Incorrect password':e.message,false);}
 }
 async function doRegister(){
+  if(!firebaseAuth){ showAuthMsg('regMsg','⏳ Firebase is still connecting, please wait 3 seconds and try again.',false); return; }
   const name=document.getElementById('regName').value.trim();
   const email=document.getElementById('regEmail').value.trim();
   const pwd=document.getElementById('regPassword').value;
@@ -2878,10 +2880,12 @@ async function wizardConnect(){
 function initFirebase(dbUrl){
   if(!dbUrl)return;
   try{
-    if(firebase.apps.length)firebase.apps.forEach(a=>a.delete());
-    firebase.initializeApp({databaseURL:dbUrl});
-    firebaseDb=firebase.database();
-    firebaseAuth=firebase.auth();
+    // Safe init: only call initializeApp once
+    if(!firebase.apps.length){
+      firebase.initializeApp({databaseURL:dbUrl});
+    }
+    firebaseDb   = firebase.database();
+    firebaseAuth = firebase.auth();
 
     // Connection status
     firebaseDb.ref('.info/connected').on('value',snap=>{
@@ -2912,10 +2916,20 @@ function initFirebase(dbUrl){
       showToast('🔄 Employees updated by another user','warn');
     });
 
-    // Auth state
+    // Auth state watcher
     firebaseAuth.onAuthStateChanged(onAuthStateChanged);
     setFbStatus('connecting');
-  }catch(e){setFbStatus('disconnected','Error');console.error(e);}
+    console.log('✅ Firebase + Auth initialized');
+  }catch(e){
+    setFbStatus('disconnected','Error — check URL');
+    console.error('Firebase init error:',e);
+    // Try recovering existing instances
+    try{
+      firebaseDb=firebase.database();
+      firebaseAuth=firebase.auth();
+      firebaseAuth.onAuthStateChanged(onAuthStateChanged);
+    }catch(e2){ console.error('Recovery failed:',e2); }
+  }
 }
 
 // ─── Write to Firebase ────────────────────────────────────────────
@@ -2966,11 +2980,15 @@ document.getElementById('tabUsers').addEventListener('click',()=>{switchTab('use
 // ─── Startup ──────────────────────────────────────────────────────
 const _savedFbUrl=localStorage.getItem('aeco_firebase_url');
 if(_savedFbUrl){
+  // URL already saved - skip wizard, show login, connect Firebase
+  document.getElementById('setupWizard').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
   setFbStatus('connecting','Connecting…');
-  initFirebase(_savedFbUrl);
-  setTimeout(()=>{const el=document.getElementById('settingsFirebaseUrl');if(el)el.value=_savedFbUrl;},200);
+  // Small delay so page renders first, then Firebase loads
+  setTimeout(()=>{ initFirebase(_savedFbUrl); }, 300);
+  setTimeout(()=>{ const el=document.getElementById('settingsFirebaseUrl'); if(el) el.value=_savedFbUrl; },500);
 }else{
-  // First time — show setup wizard
+  // First time - show setup wizard
   document.getElementById('setupWizard').classList.remove('hidden');
   document.getElementById('loginScreen').classList.add('hidden');
 }
