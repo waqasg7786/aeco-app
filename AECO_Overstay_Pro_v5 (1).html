@@ -1,0 +1,2594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AECO Overstay Pro v5 | Real-Time Multi-User</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+  <style>
+    :root { --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { font-family:'DM Sans',system-ui,sans-serif; }
+    h1,h2,h3,.font-display { font-family:'Syne',sans-serif; }
+
+    .status-pending  { background:#fef3c7;color:#92400e; }
+    .status-approved { background:#d1fae5;color:#065f46; }
+    .status-rejected { background:#fee2e2;color:#991b1b; }
+    .payment-paid    { background:#d1fae5;color:#065f46; }
+    .payment-unpaid  { background:#fee2e2;color:#991b1b; }
+    .payment-partial { background:#fef3c7;color:#92400e; }
+    .emp-active      { background:#d1fae5;color:#065f46; }
+    .emp-probation   { background:#dbeafe;color:#1e40af; }
+    .emp-leave       { background:#fef3c7;color:#92400e; }
+    .emp-severance   { background:#fee2e2;color:#991b1b; }
+    .emp-notice      { background:#fce7f3;color:#9d174d; }
+    .dark .status-pending  { background:#78350f;color:#fef3c7; }
+    .dark .status-approved { background:#064e3b;color:#d1fae5; }
+    .dark .status-rejected { background:#7f1d1d;color:#fee2e2; }
+    .dark .payment-paid    { background:#064e3b;color:#d1fae5; }
+    .dark .payment-unpaid  { background:#7f1d1d;color:#fee2e2; }
+    .dark .payment-partial { background:#78350f;color:#fef3c7; }
+    .dark .emp-active      { background:#064e3b;color:#d1fae5; }
+    .dark .emp-probation   { background:#1e3a5f;color:#bfdbfe; }
+    .dark .emp-leave       { background:#78350f;color:#fef3c7; }
+    .dark .emp-severance   { background:#7f1d1d;color:#fee2e2; }
+    .dark .emp-notice      { background:#4a044e;color:#f5d0fe; }
+
+    .status-badge,.payment-badge,.emp-badge { padding:.2rem .65rem;border-radius:9999px;font-size:.7rem;font-weight:700;display:inline-block;white-space:nowrap; }
+    .badge-rig { background:#1e3a8a;color:#fff;font-size:.7rem;padding:.2rem .65rem;border-radius:9999px;font-weight:700; }
+
+    .duplicate-row { background:#fee2e2!important;border-left:5px solid #dc2626; }
+    .warning-row   { background:#fef9c3!important; }
+    .severe-row    { background:#fee2e2!important; }
+    .dark .warning-row { background:#451a03!important; }
+    .dark .severe-row  { background:#450a0a!important; }
+
+    .tab-btn { border-bottom:3px solid transparent;color:#71717a;font-weight:600;transition:.2s;cursor:pointer;font-family:'Syne',sans-serif;font-size:.82rem;letter-spacing:.03em; }
+    .tab-btn:hover { color:#2563eb; }
+    .active-tab { border-bottom-color:#2563eb!important;color:#2563eb!important; }
+    .dark .tab-btn { color:#a1a1aa; }
+    .dark .active-tab { color:#60a5fa!important;border-bottom-color:#60a5fa!important; }
+
+    .toast { animation:slideIn .3s ease forwards; }
+    @keyframes slideIn { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .sortable-header { cursor:pointer;user-select:none;white-space:nowrap; }
+    .sortable-header:hover { color:#2563eb; }
+
+    ::-webkit-scrollbar { width:6px;height:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#94a3b8;border-radius:3px; }
+
+    @media print { .no-print{display:none!important} body{background:white!important} }
+
+    .kpi-card { transition:.2s; }
+    .kpi-card:hover { transform:translateY(-3px);box-shadow:0 10px 25px rgba(0,0,0,.12); }
+    .panel-content { animation:fadeIn .18s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+
+    .form-input { width:100%;border:1px solid #d1d5db;border-radius:.75rem;padding:.65rem 1rem;font-size:.875rem;background:inherit;transition:.15s; }
+    .form-input:focus { outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+    .dark .form-input { border-color:#3f3f46;background:#27272a; }
+
+    .page-btn { padding:.35rem .7rem;border-radius:.6rem;font-size:.78rem;font-weight:600;cursor:pointer;transition:.15s; }
+    .page-btn.active { background:#2563eb;color:white; }
+    .page-btn:not(.active):hover { background:#e2e8f0; }
+    .dark .page-btn:not(.active):hover { background:#3f3f46; }
+
+    .chart-wrap { position:relative;height:260px; }
+    .chart-wrap-lg { position:relative;height:320px; }
+    .modal-overlay { background:rgba(0,0,0,.7);backdrop-filter:blur(4px); }
+
+    .exp-warn { color:#d97706;font-weight:600; }
+    .exp-danger { color:#dc2626;font-weight:700; }
+
+    .dup-row { background:#fff1f2!important; border-left:4px solid #f43f5e; }
+    .dark .dup-row { background:#4c0519!important; }
+    .dup-badge { background:#f43f5e;color:#fff;font-size:.65rem;padding:.15rem .5rem;border-radius:9999px;font-weight:700;letter-spacing:.03em;vertical-align:middle; }
+    .dup-banner { animation: bannerPulse 2s ease-in-out 3; }
+    @keyframes bannerPulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+    .dup-group-card { border-left:4px solid #f43f5e; }
+    .dup-group-card:hover { box-shadow:0 4px 20px rgba(244,63,94,.15); }
+
+    /* Progress bars */
+    .progress-track { background:#e4e4e7;border-radius:9999px;overflow:hidden;height:6px; }
+    .dark .progress-track { background:#3f3f46; }
+    .progress-fill { height:100%;border-radius:9999px;transition:width .6s ease; }
+
+    /* Notification dot */
+    .notif-dot { width:8px;height:8px;background:#ef4444;border-radius:50%;position:absolute;top:2px;right:2px; }
+
+    /* AI insights typing animation */
+    .ai-typing::after { content:'▊';animation:blink .7s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* Quick filter pills */
+    .qf-pill { padding:.3rem .75rem;border-radius:9999px;font-size:.72rem;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:.15s; }
+    .qf-pill.active { background:#2563eb;color:white;border-color:#2563eb; }
+    .qf-pill:not(.active) { background:transparent;color:#6b7280;border-color:#d1d5db; }
+    .qf-pill:not(.active):hover { border-color:#2563eb;color:#2563eb; }
+    .dark .qf-pill:not(.active) { color:#9ca3af;border-color:#3f3f46; }
+
+    /* Animated counter */
+    @keyframes countUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+    .kpi-val { animation:countUp .4s ease; }
+
+    /* Aging color classes */
+    .age-fresh  { color:#16a34a; }
+    .age-medium { color:#d97706; }
+    .age-old    { color:#dc2626; }
+
+    /* Firebase live indicator */
+    .fb-live { display:inline-flex;align-items:center;gap:6px;padding:.3rem .75rem;border-radius:9999px;font-size:.72rem;font-weight:700; }
+    .fb-live.connected { background:#d1fae5;color:#065f46; }
+    .fb-live.disconnected { background:#fee2e2;color:#991b1b; }
+    .fb-live.connecting { background:#fef3c7;color:#92400e; }
+    .dark .fb-live.connected { background:#064e3b;color:#6ee7b7; }
+    .dark .fb-live.disconnected { background:#7f1d1d;color:#fca5a5; }
+    .dark .fb-live.connecting { background:#451a03;color:#fde68a; }
+    .live-dot { width:8px;height:8px;border-radius:50%;display:inline-block; }
+    .live-dot.green { background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.4);animation:livePulse 1.5s infinite; }
+    .live-dot.red { background:#ef4444; }
+    .live-dot.yellow { background:#f59e0b; }
+    @keyframes livePulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 70%{box-shadow:0 0 0 6px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+    .update-flash { animation:flashRow .8s ease; }
+    @keyframes flashRow { 0%{background:rgba(34,197,94,.25)} 100%{background:transparent} }
+  </style>
+</head>
+<body class="bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+<div class="max-w-[1900px] mx-auto px-4 py-6">
+
+  <!-- Header -->
+  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4 no-print">
+    <div>
+      <h1 class="text-3xl font-display font-bold tracking-tight flex items-center gap-3 text-zinc-800 dark:text-white">
+        <span class="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
+          <i class="fa-solid fa-oil-can text-white text-lg"></i>
+        </span>
+        AECO Overstay Pro <span class="text-blue-500 text-lg font-normal ml-1">v5</span>
+      </h1>
+      <p class="text-zinc-500 dark:text-zinc-400 mt-1 ml-14 text-sm flex items-center gap-3">
+        Rig Overstay Intelligence • Payment Tracking • AI Analytics
+        <span id="fbLiveIndicator" class="fb-live disconnected"><span class="live-dot red"></span><span id="fbLiveText">Not Connected</span></span>
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button id="syncStatusBtn" class="hidden flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition" onclick="syncToSheet()">
+        <i id="syncIcon" class="fas fa-cloud-upload-alt"></i> <span id="syncLabel">Sync</span>
+      </button>
+      <button id="addRecordBtn" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow transition"><i class="fas fa-plus"></i> New Overstay</button>
+      <button id="downloadOvTemplateBtn" class="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-download"></i> Overstay Template</button>
+      <button id="importOverstayBtn" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-file-import"></i> Import Overstay</button>
+      <button id="exportAllBtn" class="flex items-center gap-1.5 bg-zinc-700 hover:bg-zinc-800 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-download"></i> Export All</button>
+      <button id="exportFilteredBtn" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-filter"></i> Export Filtered</button>
+      <button id="printReportBtn" class="flex items-center gap-1.5 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-print"></i> Print</button>
+      <button id="settingsBtn" class="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-cog"></i> Settings</button>
+      <button id="toggleDarkMode" class="flex items-center gap-1.5 bg-zinc-800 hover:bg-black text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-moon"></i> <span id="darkModeText">Dark</span></button>
+      <button id="resetDataBtn" class="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-undo"></i> Reset</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex border-b border-zinc-200 dark:border-zinc-700 mb-6 overflow-x-auto no-print gap-1">
+    <button id="tabDashboard"   class="tab-btn px-5 py-3 whitespace-nowrap">📊 Dashboard</button>
+    <button id="tabOverstay"    class="tab-btn active-tab px-5 py-3 whitespace-nowrap">📋 Overstay Records</button>
+    <button id="tabEmployees"   class="tab-btn px-5 py-3 whitespace-nowrap">👷 Employee Directory</button>
+    <button id="tabStats"       class="tab-btn px-5 py-3 whitespace-nowrap">📊 Analytics</button>
+    <button id="tabRigSummary"  class="tab-btn px-5 py-3 whitespace-nowrap">🏗️ Rig Summary</button>
+    <button id="tabDuplicates"  class="tab-btn px-5 py-3 whitespace-nowrap">⚠️ Duplicates <span id="dupTabBadge" class="hidden ml-1 bg-rose-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"></span></button>
+    <button id="tabInsights"    class="tab-btn px-5 py-3 whitespace-nowrap">🤖 AI Insights</button>
+    <button id="tabNotifications" class="tab-btn px-5 py-3 whitespace-nowrap relative">🔔 Alerts <span id="notifTabBadge" class="hidden ml-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"></span></button>
+    <button id="tabAudit"       class="tab-btn px-5 py-3 whitespace-nowrap">📝 Audit Log</button>
+  </div>
+
+  <!-- ==================== DASHBOARD PANEL ==================== -->
+  <div id="dashboardPanel" class="panel-content hidden">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-blue-600">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Total Overstays</p>
+        <p id="kpiTotal" class="text-4xl font-display font-bold text-blue-600 kpi-val">0</p>
+        <p class="text-xs text-zinc-400 mt-2">All recorded overstay events</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-green-600">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Total Days Lost</p>
+        <p id="kpiDays" class="text-4xl font-display font-bold text-green-600 kpi-val">0</p>
+        <p class="text-xs text-zinc-400 mt-2">Cumulative overstay days across all rigs</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-yellow-500">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Pending Approval</p>
+        <p id="kpiPending" class="text-4xl font-display font-bold text-yellow-500 kpi-val">0</p>
+        <p class="text-xs text-zinc-400 mt-2">Records awaiting manager sign-off</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-purple-600">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Avg. Overstay</p>
+        <p id="kpiAvg" class="text-4xl font-display font-bold text-purple-600 kpi-val">0 <span class="text-lg font-normal text-zinc-400">days</span></p>
+        <p class="text-xs text-zinc-400 mt-2">Average duration per overstay record</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-red-600">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Unpaid Records</p>
+        <p id="kpiUnpaidCount" class="text-4xl font-display font-bold text-red-600 kpi-val">0</p>
+        <p class="text-xs text-zinc-400 mt-2">Records not yet settled</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-orange-500">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Est. Unpaid Cost</p>
+        <p id="kpiUnpaidCost" class="text-3xl font-display font-bold text-orange-500 kpi-val">$0</p>
+        <p class="text-xs text-zinc-400 mt-2">Financial exposure on unpaid records</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-emerald-600">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Total Paid</p>
+        <p id="kpiTotalPaid" class="text-3xl font-display font-bold text-emerald-600 kpi-val">$0</p>
+        <p class="text-xs text-zinc-400 mt-2">Amount successfully recovered</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-sky-600">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">Recovery Rate</p>
+        <p id="kpiRecovery" class="text-4xl font-display font-bold text-sky-600 kpi-val">0%</p>
+        <div class="progress-track mt-3"><div id="kpiRecoveryBar" class="progress-fill bg-sky-500" style="width:0%"></div></div>
+        <p class="text-xs text-zinc-400 mt-2">Percentage of costs recovered</p>
+      </div>
+      <div class="kpi-card bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow border-l-4 border-rose-600 cursor-pointer" onclick="switchTab('duplicates')" title="View duplicate report">
+        <p class="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2 flex items-center gap-1"><i class="fas fa-copy text-rose-500"></i> Duplicate Groups</p>
+        <p id="kpiDupCount" class="text-4xl font-display font-bold text-rose-600 kpi-val">0</p>
+        <p class="text-xs text-zinc-400 mt-2">Click to view overlapping periods</p>
+      </div>
+    </div>
+
+    <!-- Quick action shortcuts -->
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5">
+      <h3 class="font-display font-bold text-base mb-4 text-zinc-700 dark:text-zinc-200">Quick Actions</h3>
+      <div class="flex flex-wrap gap-3">
+        <button onclick="document.getElementById('addRecordBtn').click()" class="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-4 py-2.5 rounded-xl text-xs font-semibold border border-indigo-200 dark:border-indigo-800 transition"><i class="fas fa-plus"></i> New Overstay</button>
+        <button onclick="switchTab('overstay')" class="flex items-center gap-2 bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 px-4 py-2.5 rounded-xl text-xs font-semibold border border-blue-200 dark:border-blue-800 transition"><i class="fas fa-table"></i> View All Records</button>
+        <button onclick="switchTab('stats')" class="flex items-center gap-2 bg-purple-50 dark:bg-purple-950 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 px-4 py-2.5 rounded-xl text-xs font-semibold border border-purple-200 dark:border-purple-800 transition"><i class="fas fa-chart-bar"></i> Analytics</button>
+        <button onclick="switchTab('notifications')" class="flex items-center gap-2 bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 text-red-700 dark:text-red-300 px-4 py-2.5 rounded-xl text-xs font-semibold border border-red-200 dark:border-red-800 transition"><i class="fas fa-bell"></i> View Alerts</button>
+        <button onclick="switchTab('duplicates')" class="flex items-center gap-2 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 px-4 py-2.5 rounded-xl text-xs font-semibold border border-rose-200 dark:border-rose-800 transition"><i class="fas fa-copy"></i> Duplicates</button>
+        <button onclick="switchTab('insights')" class="flex items-center gap-2 bg-violet-50 dark:bg-violet-950 hover:bg-violet-100 dark:hover:bg-violet-900 text-violet-700 dark:text-violet-300 px-4 py-2.5 rounded-xl text-xs font-semibold border border-violet-200 dark:border-violet-800 transition"><i class="fas fa-robot"></i> AI Insights</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== OVERSTAY PANEL ==================== -->
+  <div id="overstayPanel" class="panel-content">
+
+    <div id="dupAlertBanner" class="hidden dup-banner mb-4 bg-rose-50 dark:bg-rose-950 border border-rose-300 dark:border-rose-700 rounded-2xl px-5 py-4 flex items-center justify-between gap-4 no-print">
+      <div class="flex items-center gap-3">
+        <span class="w-9 h-9 bg-rose-500 rounded-xl flex items-center justify-center shrink-0"><i class="fas fa-exclamation-triangle text-white text-sm"></i></span>
+        <div>
+          <p class="font-bold text-rose-700 dark:text-rose-300 text-sm" id="dupAlertText">Duplicate overstay periods detected</p>
+          <p class="text-xs text-rose-500 dark:text-rose-400 mt-0.5">Same Employee # with overlapping date ranges. Review and resolve to avoid double payments.</p>
+        </div>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        <button onclick="switchTab('duplicates')" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition">View Report</button>
+        <button onclick="document.getElementById('dupAlertBanner').classList.add('hidden')" class="px-3 py-2 text-rose-400 hover:text-rose-600 text-xs">Dismiss</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5 mb-4 no-print">
+      <!-- Quick date filters -->
+      <div class="flex flex-wrap gap-2 mb-4 pb-3 border-b dark:border-zinc-700">
+        <span class="text-xs font-semibold text-zinc-400 flex items-center">Quick Filter:</span>
+        <button class="qf-pill active" id="qf_all" onclick="setQuickFilter('all',this)">All Time</button>
+        <button class="qf-pill" id="qf_thismonth" onclick="setQuickFilter('thismonth',this)">This Month</button>
+        <button class="qf-pill" id="qf_lastmonth" onclick="setQuickFilter('lastmonth',this)">Last Month</button>
+        <button class="qf-pill" id="qf_q1" onclick="setQuickFilter('q1',this)">Q1</button>
+        <button class="qf-pill" id="qf_q2" onclick="setQuickFilter('q2',this)">Q2</button>
+        <button class="qf-pill" id="qf_ytd" onclick="setQuickFilter('ytd',this)">Year to Date</button>
+        <button class="qf-pill" id="qf_unpaid" onclick="setQuickFilter('unpaid',this)">Unpaid Only</button>
+        <button class="qf-pill" id="qf_pending" onclick="setQuickFilter('pending',this)">Pending Approval</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Rig</label>
+          <select id="filterRig" class="form-input"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Designation</label>
+          <select id="filterDesignation" class="form-input"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Approval</label>
+          <select id="filterStatus" class="form-input">
+            <option value="all">All</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Payment</label>
+          <select id="filterPayment" class="form-input">
+            <option value="all">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Unpaid">Unpaid</option>
+            <option value="Partial">Partial</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">From Date</label>
+          <input type="date" id="filterDateFrom" class="form-input">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">To Date</label>
+          <input type="date" id="filterDateTo" class="form-input">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wide">Severity</label>
+          <select id="filterSeverity" class="form-input">
+            <option value="all">All</option>
+            <option value="severe">Severe (&gt;30d)</option>
+            <option value="warning">Warning (15–30d)</option>
+            <option value="normal">Normal (&lt;15d)</option>
+          </select>
+        </div>
+        <div class="flex items-end gap-2">
+          <input type="text" id="searchName" placeholder="Search name / ID…" class="form-input flex-1">
+          <button id="resetFilters" class="px-3 py-2.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 rounded-xl text-xs font-semibold whitespace-nowrap">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table toolbar -->
+    <div class="bg-white dark:bg-zinc-900 rounded-t-2xl shadow-sm px-5 py-3 border-b dark:border-zinc-700 flex flex-wrap justify-between items-center gap-3 no-print">
+      <div class="flex items-center gap-4 flex-wrap">
+        <span id="recordCountBadge" class="font-semibold text-sm text-zinc-600 dark:text-zinc-300"></span>
+        <button onclick="switchTab('duplicates')" class="flex items-center gap-1.5 text-rose-600 hover:text-rose-700 dark:text-rose-400 text-xs font-semibold">
+          <i class="fas fa-copy"></i> View Duplicate Report
+          <span id="inlinedupBadge" class="hidden bg-rose-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"></span>
+        </button>
+        <div class="flex items-center gap-2 text-xs text-zinc-500">
+          <label class="font-semibold">Rows/page:</label>
+          <select id="pageSizeSelect" class="border border-zinc-300 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs dark:bg-zinc-800">
+            <option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="9999">All</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button id="bulkApprove" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"><i class="fas fa-thumbs-up"></i> Approve</button>
+        <button id="bulkMarkPaid" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"><i class="fas fa-check"></i> Mark Paid</button>
+        <button id="bulkDelete" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"><i class="fas fa-trash"></i> Delete</button>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-zinc-900 shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 text-xs">
+          <thead class="bg-zinc-50 dark:bg-zinc-950">
+            <tr>
+              <th class="px-3 py-3 w-8"><input type="checkbox" id="selectAll" class="w-4 h-4 accent-blue-600"></th>
+              <th class="px-3 py-3 text-left sortable-header font-semibold text-zinc-500" data-sort="rig">Rig ↕</th>
+              <th class="px-3 py-3 text-left sortable-header font-semibold text-zinc-500" data-sort="empId">Emp # ↕</th>
+              <th class="px-3 py-3 text-left sortable-header font-semibold text-zinc-500" data-sort="name">Name ↕</th>
+              <th class="px-3 py-3 text-left sortable-header font-semibold text-zinc-500" data-sort="designation">Designation ↕</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Civil ID</th>
+              <th class="px-3 py-3 text-left sortable-header font-semibold text-zinc-500" data-sort="startDate">Period ↕</th>
+              <th class="px-3 py-3 text-center sortable-header font-semibold text-zinc-500" data-sort="days">Days ↕</th>
+              <th class="px-3 py-3 text-right font-semibold text-zinc-500">Salary</th>
+              <th class="px-3 py-3 text-right font-semibold text-zinc-500">Amount</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Reason</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Approval</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Payment</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Reliever</th>
+              <th class="px-3 py-3 text-center font-semibold text-zinc-500 no-print">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="overstayTableBody" class="divide-y dark:divide-zinc-700"></tbody>
+        </table>
+      </div>
+      <div id="noRecordsMsg" class="hidden text-center py-16 text-zinc-400">
+        <i class="fas fa-search text-4xl mb-3 opacity-30"></i>
+        <p class="text-base">No matching overstay records found.</p>
+      </div>
+    </div>
+
+    <!-- Table footer with totals -->
+    <div id="tableFooterTotals" class="bg-zinc-50 dark:bg-zinc-800 border-t dark:border-zinc-700 px-5 py-3 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex flex-wrap gap-6">
+      <span>Filtered: <strong id="footerCount">0</strong> records</span>
+      <span>Total Days: <strong id="footerDays" class="text-blue-600">0</strong></span>
+      <span>Total Cost: <strong id="footerCost" class="text-orange-500">$0</strong></span>
+      <span>Paid: <strong id="footerPaid" class="text-green-600">$0</strong></span>
+      <span>Unpaid: <strong id="footerUnpaid" class="text-red-600">$0</strong></span>
+    </div>
+    <div class="bg-white dark:bg-zinc-900 rounded-b-2xl shadow-sm px-5 py-3 border-t dark:border-zinc-700 flex flex-wrap justify-between items-center gap-3 no-print">
+      <span id="paginationInfo" class="text-xs text-zinc-500"></span>
+      <div id="paginationControls" class="flex gap-1 flex-wrap"></div>
+    </div>
+  </div>
+
+  <!-- ==================== EMPLOYEES PANEL ==================== -->
+  <div id="employeesPanel" class="panel-content hidden">
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-4 mb-4">
+      <div class="flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex gap-3 flex-wrap items-center flex-1 min-w-0">
+          <input type="text" id="empSearch" placeholder="🔍  Search name, employee ID, rig, designation…" class="form-input max-w-sm">
+          <select id="empStatusFilter" class="form-input w-40">
+            <option value="all">All Status</option>
+            <option value="Active">Active</option>
+            <option value="On Probation">On Probation</option>
+            <option value="On Leave">On Leave</option>
+            <option value="Severance">Severance</option>
+            <option value="On Notice">On Notice</option>
+          </select>
+          <select id="empRigFilter" class="form-input w-36"><option value="all">All Rigs</option></select>
+          <span id="empCount" class="text-xs text-zinc-500 font-semibold whitespace-nowrap bg-zinc-100 dark:bg-zinc-800 px-3 py-2 rounded-xl"></span>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button id="addEmpBtn" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-plus"></i> Add Employee</button>
+          <button id="importEmpBtn" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-file-import"></i> Import from Excel</button>
+          <button id="downloadEmpTemplateBtn" class="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-download"></i> Download Template</button>
+          <button id="exportEmpBtn" class="flex items-center gap-1.5 bg-zinc-600 hover:bg-zinc-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-upload"></i> Export Directory</button>
+        </div>
+      </div>
+    </div>
+    <div id="empImportHelp" class="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 mb-4 text-xs text-blue-700 dark:text-blue-300">
+      <div class="flex items-start gap-3">
+        <i class="fas fa-info-circle text-blue-500 mt-0.5 shrink-0"></i>
+        <div>
+          <strong>Import from AECO Excel Format:</strong> Required columns:
+          <span class="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Code</span>,
+          <span class="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Employee</span>,
+          <span class="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Govt Designation</span>,
+          <span class="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Department Level 1</span>,
+          <span class="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Employee Status</span>.
+          <button id="dismissEmpHelp" class="ml-3 text-blue-500 hover:text-blue-700 underline">Dismiss</button>
+        </div>
+      </div>
+    </div>
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow overflow-hidden">
+      <div class="overflow-x-auto max-h-[72vh] overflow-y-auto">
+        <table class="min-w-full text-xs divide-y divide-zinc-200 dark:divide-zinc-700">
+          <thead class="bg-zinc-50 dark:bg-zinc-950 sticky top-0 z-10">
+            <tr>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Emp #</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Full Name</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Designation</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Rig</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Status</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Joining Date</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Civil ID</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Civil ID Expiry</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Passport</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Passport Expiry</th>
+              <th class="px-3 py-3 text-right font-semibold text-zinc-500">Basic</th>
+              <th class="px-3 py-3 text-right font-semibold text-zinc-500">Total</th>
+              <th class="px-3 py-3 text-left font-semibold text-zinc-500">Email</th>
+              <th class="px-3 py-3 text-center font-semibold text-zinc-500">Overstays</th>
+              <th class="px-3 py-3 text-center font-semibold text-zinc-500">Total Days</th>
+              <th class="px-3 py-3 text-center font-semibold text-zinc-500 no-print">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="employeeTableBody" class="divide-y dark:divide-zinc-700"></tbody>
+        </table>
+        <div id="noEmpMsg" class="hidden text-center py-12 text-zinc-400">
+          <i class="fas fa-users text-4xl mb-3 opacity-30"></i>
+          <p>No employees found. Import from Excel or add manually.</p>
+        </div>
+      </div>
+    </div>
+    <div class="text-xs text-zinc-400 dark:text-zinc-500 mt-2 px-1">
+      <i class="fas fa-exclamation-triangle text-amber-400"></i> Orange = expires within 60 days &nbsp;|&nbsp;
+      <i class="fas fa-exclamation-circle text-red-400"></i> Red = expired
+    </div>
+  </div>
+
+  <!-- ==================== ANALYTICS PANEL ==================== -->
+  <div id="statsPanel" class="panel-content hidden">
+    <!-- Summary stats bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+      <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-2xl shadow">
+        <p class="text-xs opacity-75 uppercase tracking-wide font-semibold">Total Records Analyzed</p>
+        <p id="anTotal" class="text-3xl font-display font-bold mt-1">0</p>
+      </div>
+      <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl shadow">
+        <p class="text-xs opacity-75 uppercase tracking-wide font-semibold">Total Financial Exposure</p>
+        <p id="anCost" class="text-2xl font-display font-bold mt-1">$0</p>
+      </div>
+      <div class="bg-gradient-to-br from-green-600 to-emerald-600 text-white p-4 rounded-2xl shadow">
+        <p class="text-xs opacity-75 uppercase tracking-wide font-semibold">Payment Recovery</p>
+        <p id="anRecovery" class="text-3xl font-display font-bold mt-1">0%</p>
+      </div>
+      <div class="bg-gradient-to-br from-purple-600 to-purple-700 text-white p-4 rounded-2xl shadow">
+        <p class="text-xs opacity-75 uppercase tracking-wide font-semibold">Active Rigs Tracked</p>
+        <p id="anRigs" class="text-3xl font-display font-bold mt-1">0</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">Overstays by Rig</h3>
+        <div class="chart-wrap"><canvas id="chartRig"></canvas></div>
+      </div>
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">Payment Status Breakdown</h3>
+        <div class="chart-wrap"><canvas id="chartPayment"></canvas></div>
+      </div>
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">Top Overstay Reasons</h3>
+        <div class="chart-wrap"><canvas id="chartReasons"></canvas></div>
+      </div>
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">Monthly Trend (Days Lost)</h3>
+        <div class="chart-wrap"><canvas id="chartMonthly"></canvas></div>
+      </div>
+      <!-- NEW: Cost by Rig -->
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">💰 Financial Exposure by Rig</h3>
+        <div class="chart-wrap"><canvas id="chartCostByRig"></canvas></div>
+      </div>
+      <!-- NEW: Monthly Cost Trend (Paid vs Unpaid) -->
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">💳 Monthly Cost: Paid vs Unpaid</h3>
+        <div class="chart-wrap"><canvas id="chartCostTrend"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">Approval Status by Rig</h3>
+        <div style="height:220px"><canvas id="chartApproval"></canvas></div>
+      </div>
+      <!-- NEW: Payment Aging -->
+      <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+        <h3 class="font-display font-bold text-base mb-4">⏱️ Unpaid Aging Buckets</h3>
+        <div style="height:220px"><canvas id="chartAging"></canvas></div>
+      </div>
+    </div>
+
+    <!-- NEW: Top Employees Table -->
+    <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow mb-5">
+      <h3 class="font-display font-bold text-base mb-4">🏆 Top 10 Employees by Overstay Days</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+          <thead>
+            <tr class="border-b dark:border-zinc-700">
+              <th class="text-left py-2 px-3 text-zinc-400 font-semibold uppercase tracking-wide">#</th>
+              <th class="text-left py-2 px-3 text-zinc-400 font-semibold uppercase tracking-wide">Employee</th>
+              <th class="text-left py-2 px-3 text-zinc-400 font-semibold uppercase tracking-wide">Rig</th>
+              <th class="text-center py-2 px-3 text-zinc-400 font-semibold uppercase tracking-wide">Records</th>
+              <th class="text-center py-2 px-3 text-zinc-400 font-semibold uppercase tracking-wide">Total Days</th>
+              <th class="text-right py-2 px-3 text-zinc-400 font-semibold uppercase tracking-wide">Total Cost</th>
+              <th class="text-left py-2 px-3 text-zinc-400 font-semibold uppercase tracking-wide">Payment</th>
+            </tr>
+          </thead>
+          <tbody id="topEmployeesBody" class="divide-y dark:divide-zinc-700"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- NEW: Designation breakdown -->
+    <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow">
+      <h3 class="font-display font-bold text-base mb-4">👷 Overstays by Designation</h3>
+      <div class="chart-wrap-lg"><canvas id="chartDesignation"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ==================== RIG SUMMARY PANEL ==================== -->
+  <div id="rigSummaryPanel" class="panel-content hidden">
+    <!-- Global rig stats -->
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5 mb-5">
+      <div class="flex flex-wrap gap-6">
+        <div><p class="text-xs text-zinc-400 uppercase font-semibold">Total Rigs</p><p id="rsTotal" class="text-2xl font-bold text-blue-600">0</p></div>
+        <div><p class="text-xs text-zinc-400 uppercase font-semibold">Highest Cost Rig</p><p id="rsHighest" class="text-lg font-bold text-red-500">—</p></div>
+        <div><p class="text-xs text-zinc-400 uppercase font-semibold">Best Recovery</p><p id="rsBest" class="text-lg font-bold text-green-600">—</p></div>
+        <div><p class="text-xs text-zinc-400 uppercase font-semibold">Most Overstays</p><p id="rsMost" class="text-lg font-bold text-orange-500">—</p></div>
+      </div>
+    </div>
+    <div id="rigSummaryGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+  </div>
+
+  <!-- ==================== DUPLICATES PANEL ==================== -->
+  <div id="duplicatesPanel" class="panel-content hidden">
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5 mb-5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-4 flex-wrap">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center"><i class="fas fa-copy text-white"></i></span>
+          <div>
+            <p class="text-xs text-zinc-400 uppercase tracking-wide font-semibold">Duplicate Groups</p>
+            <p id="dupSummaryGroups" class="text-2xl font-display font-bold text-rose-600">0</p>
+          </div>
+        </div>
+        <div class="w-px h-10 bg-zinc-200 dark:bg-zinc-700"></div>
+        <div><p class="text-xs text-zinc-400 uppercase tracking-wide font-semibold">Affected Records</p><p id="dupSummaryRecords" class="text-2xl font-display font-bold text-orange-500">0</p></div>
+        <div class="w-px h-10 bg-zinc-200 dark:bg-zinc-700"></div>
+        <div><p class="text-xs text-zinc-400 uppercase tracking-wide font-semibold">Overlap Days at Risk</p><p id="dupSummaryDays" class="text-2xl font-display font-bold text-amber-500">0</p></div>
+        <div class="w-px h-10 bg-zinc-200 dark:bg-zinc-700"></div>
+        <div><p class="text-xs text-zinc-400 uppercase tracking-wide font-semibold">Potential Double-Pay</p><p id="dupSummaryCost" class="text-2xl font-display font-bold text-red-600">$0</p></div>
+      </div>
+      <div class="flex gap-2">
+        <button id="exportDupBtn" class="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition"><i class="fas fa-download"></i> Export Duplicate Report</button>
+      </div>
+    </div>
+    <div class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-2xl px-5 py-3 mb-5 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+      <i class="fas fa-info-circle shrink-0"></i>
+      <span><strong>Detection rule:</strong> Two records are flagged as duplicates when they share the same <strong>Employee #</strong> and their <strong>overstay periods overlap</strong> (even partially).</span>
+    </div>
+    <div id="dupGroupsContainer">
+      <div class="text-center py-16 text-zinc-400">
+        <i class="fas fa-check-circle text-4xl mb-3 text-green-400 opacity-60"></i>
+        <p class="text-base font-semibold text-green-600 dark:text-green-400">No duplicates found</p>
+        <p class="text-sm mt-1">All overstay records have unique employee / period combinations.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== AI INSIGHTS PANEL ==================== -->
+  <div id="insightsPanel" class="panel-content hidden">
+
+    <!-- Gemini API key banner (shows if not set) -->
+    <div id="geminiKeyBanner" class="mb-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" class="w-8 h-8" onerror="this.style.display='none'">
+        <div>
+          <p class="font-bold text-blue-800 dark:text-blue-200 text-sm">Connect Google Gemini to enable AI analysis</p>
+          <p class="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Get your free API key at <strong>aistudio.google.com</strong> → paste it below → done!</p>
+        </div>
+      </div>
+      <div class="flex gap-2 items-center flex-wrap">
+        <input type="password" id="geminiKeyInput" placeholder="Paste Gemini API key…" class="form-input w-64 font-mono text-xs">
+        <button id="saveGeminiKey" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fas fa-key"></i> Save Key
+        </button>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="px-4 py-2.5 bg-white dark:bg-zinc-800 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-semibold transition hover:bg-blue-50 flex items-center gap-1.5">
+          <i class="fas fa-external-link-alt"></i> Get Free Key
+        </a>
+      </div>
+    </div>
+
+    <!-- Main analysis card -->
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-6 mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 shadow-lg">
+            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" class="w-6 h-6" onerror="this.parentElement.innerHTML='<i class=\'fas fa-robot text-white\'></i>'">
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-lg flex items-center gap-2">
+              Gemini AI Insights
+              <span id="geminiStatusDot" class="w-2 h-2 rounded-full bg-zinc-300"></span>
+            </h3>
+            <p class="text-xs text-zinc-400" id="geminiStatusText">Add your Gemini API key to get started</p>
+          </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <select id="analysisType" class="form-input text-xs w-48">
+            <option value="full">Full Analysis</option>
+            <option value="financial">Financial Focus</option>
+            <option value="operational">Operational Focus</option>
+            <option value="risk">Risk Assessment</option>
+            <option value="rig">Per-Rig Breakdown</option>
+          </select>
+          <button id="runAiInsights" class="flex items-center gap-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-90 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition shadow-lg disabled:opacity-50">
+            <i class="fas fa-sparkles"></i> Analyze with Gemini
+          </button>
+          <button id="clearInsights" class="px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl text-xs font-semibold transition">
+            <i class="fas fa-trash"></i> Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Output area -->
+      <div id="aiInsightsOutput" class="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed min-h-[200px]">
+        <div class="flex flex-col items-center justify-center py-16 text-zinc-400">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 flex items-center justify-center mb-4">
+            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" class="w-8 h-8 opacity-60" onerror="this.parentElement.innerHTML='<i class=\'fas fa-robot text-4xl text-indigo-300\'></i>'">
+          </div>
+          <p class="text-base font-semibold text-zinc-500 mb-1">Ready for Gemini Analysis</p>
+          <p class="text-xs text-center max-w-xs">Add your API key above, then click "Analyze with Gemini" to get instant AI-powered insights on your overstay data.</p>
+        </div>
+      </div>
+
+      <!-- Token usage indicator -->
+      <div id="geminiTokenInfo" class="hidden mt-4 pt-3 border-t dark:border-zinc-700 flex items-center justify-between text-xs text-zinc-400">
+        <span id="geminiModelLabel" class="flex items-center gap-1"><i class="fas fa-microchip"></i> gemini-2.0-flash</span>
+        <span id="geminiTimestamp"></span>
+      </div>
+    </div>
+
+    <!-- Quick stat cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5">
+        <h4 class="font-display font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-fire text-orange-500"></i> Highest Risk Employees</h4>
+        <div id="aiHighRisk" class="space-y-2 text-xs text-zinc-500">—</div>
+      </div>
+      <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5">
+        <h4 class="font-display font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-exclamation-circle text-red-500"></i> Oldest Unpaid Records</h4>
+        <div id="aiOldestUnpaid" class="space-y-2 text-xs text-zinc-500">—</div>
+      </div>
+      <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5">
+        <h4 class="font-display font-bold text-sm mb-3 flex items-center gap-2"><i class="fas fa-chart-line text-blue-500"></i> Monthly Cost Trend</h4>
+        <div id="aiCostTrend" class="space-y-1 text-xs text-zinc-500">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== NOTIFICATIONS PANEL ==================== -->
+  <div id="notificationsPanel" class="panel-content hidden">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h2 class="text-xl font-display font-bold">Alerts & Notifications</h2>
+        <p class="text-xs text-zinc-400 mt-1">Expiring documents, long-pending approvals, and critical items requiring attention</p>
+      </div>
+      <button onclick="renderNotifications()" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition">
+        <i class="fas fa-sync"></i> Refresh
+      </button>
+    </div>
+    <div id="notificationsContainer" class="space-y-3"></div>
+  </div>
+
+  <!-- ==================== AUDIT LOG PANEL ==================== -->
+  <div id="auditPanel" class="panel-content hidden">
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5 mb-5 flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-display font-bold">Audit Log</h2>
+        <p class="text-xs text-zinc-400 mt-1">Track all changes to overstay records</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="clearAuditLog()" class="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition">
+          <i class="fas fa-trash"></i> Clear Log
+        </button>
+      </div>
+    </div>
+    <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow overflow-hidden">
+      <div class="overflow-x-auto max-h-[72vh] overflow-y-auto">
+        <table class="min-w-full text-xs divide-y divide-zinc-200 dark:divide-zinc-700">
+          <thead class="bg-zinc-50 dark:bg-zinc-950 sticky top-0">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Timestamp</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Action</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Employee</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Rig</th>
+              <th class="px-4 py-3 text-left font-semibold text-zinc-500">Details</th>
+            </tr>
+          </thead>
+          <tbody id="auditTableBody" class="divide-y dark:divide-zinc-700"></tbody>
+        </table>
+        <div id="noAuditMsg" class="text-center py-12 text-zinc-400">
+          <i class="fas fa-clipboard-list text-4xl mb-3 opacity-30"></i>
+          <p>No audit entries yet. Actions on overstay records will be logged here.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-[100] space-y-2 no-print"></div>
+</div>
+
+<!-- ==================== OVERSTAY MODAL ==================== -->
+<div id="entryModal" class="fixed inset-0 modal-overlay hidden flex items-center justify-center z-50 no-print">
+  <div class="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-2xl mx-4 max-h-[92vh] overflow-y-auto">
+    <div class="p-7">
+      <div class="flex justify-between items-center mb-5">
+        <h2 id="modalTitle" class="text-xl font-display font-bold">Add Overstay Record</h2>
+        <button id="closeModalBtn" class="text-2xl text-zinc-400 hover:text-zinc-600">×</button>
+      </div>
+      <form id="overstayForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="hidden" id="editIndex" value="-1">
+        <div>
+          <label class="block text-xs font-semibold mb-1">Rig <span class="text-red-500">*</span></label>
+          <input type="text" id="modalRig" required class="form-input" list="rigList">
+          <datalist id="rigList"></datalist>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Employee # <span class="text-red-500">*</span></label>
+          <input type="text" id="modalEmpId" required class="form-input" list="empIdList">
+          <datalist id="empIdList"></datalist>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Full Name <span class="text-red-500">*</span></label>
+          <input type="text" id="modalName" required class="form-input" list="empNameList">
+          <datalist id="empNameList"></datalist>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Designation <span class="text-red-500">*</span></label>
+          <input type="text" id="modalDesignation" required class="form-input">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Rotation</label>
+          <input type="text" id="modalRotation" value="28/28" class="form-input">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Civil ID#</label>
+          <input type="text" id="modalCivilId" class="form-input" placeholder="e.g. 293011606667">
+        </div>
+        <div class="md:col-span-2 bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 space-y-3">
+          <p class="text-xs font-bold uppercase tracking-widest text-zinc-400">Salary Calculation <span class="text-zinc-300 font-normal normal-case tracking-normal">— (Basic × 12) ÷ 365 = Per Day Rate</span></p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold mb-1">Monthly Basic Salary</label>
+              <input type="number" id="modalSalary" placeholder="Auto-filled from directory" class="form-input" step="0.01">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Per Day Rate <span class="text-zinc-400 font-normal">(auto-calculated)</span></label>
+              <input type="number" id="modalDailyRate" placeholder="Computed from basic salary" class="form-input bg-zinc-100 dark:bg-zinc-700" step="0.0001" readonly>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold mb-1">Calculated Amount</label>
+              <input type="text" id="modalCalcAmount" placeholder="Select dates first" class="form-input bg-zinc-100 dark:bg-zinc-700 font-bold text-green-700 dark:text-green-400" readonly>
+            </div>
+          </div>
+          <p id="modalSalaryNote" class="text-xs text-zinc-400 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Start Date <span class="text-red-500">*</span></label>
+          <input type="date" id="modalStart" required class="form-input">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">End Date <span class="text-red-500">*</span></label>
+          <input type="date" id="modalEnd" required class="form-input">
+        </div>
+        <div id="modalDaysPreview" class="md:col-span-2 hidden">
+          <div class="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3 text-xs grid grid-cols-3 gap-4">
+            <span>📅 <strong id="previewDays">0</strong> days overstay</span>
+            <span>📊 <strong id="previewRate">—</strong> per day</span>
+            <span class="font-bold text-green-700 dark:text-green-400">💰 <strong id="previewCost">$0</strong> total</span>
+          </div>
+        </div>
+
+        <!-- Last OS History for selected employee -->
+        <div id="lastOSBanner" class="md:col-span-2 hidden">
+          <div class="bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-3 text-xs">
+            <div class="flex items-center justify-between mb-2">
+              <p class="font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5"><i class="fas fa-history"></i> Previous OS Records for this Employee</p>
+              <button type="button" id="applySuggestedDate" class="hidden flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold transition">
+                <i class="fas fa-magic"></i> Use Suggested Start Date
+              </button>
+            </div>
+            <div id="lastOSContent" class="space-y-1.5"></div>
+          </div>
+        </div>
+
+        <!-- Inline duplicate warning -->
+        <div id="formDupWarning" class="md:col-span-2 hidden">
+          <div class="bg-rose-50 dark:bg-rose-950 border-2 border-rose-400 dark:border-rose-600 rounded-xl px-4 py-3 text-xs">
+            <p class="font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5 mb-2"><i class="fas fa-exclamation-triangle"></i> ⚠️ OVERLAP DETECTED — Possible Duplicate!</p>
+            <div id="formDupContent" class="space-y-1"></div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Reason <span class="text-red-500">*</span></label>
+          <input type="text" id="modalReason" required list="reasonsList" class="form-input">
+          <datalist id="reasonsList">
+            <option value="NO RELIEVER"><option value="RELIEVER RESIGNED"><option value="GP EXPIRED">
+            <option value="CREW SHORTAGE"><option value="ACCIDENT IN INDIA">
+            <option value="WAITING FOR RELIEVER"><option value="COVER OVERSTAY">
+          </datalist>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Reliever Name</label>
+          <input type="text" id="modalReliever" class="form-input">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Actual Amount Paid</label>
+          <input type="number" id="modalAmount" placeholder="e.g. 266.67" class="form-input" step="0.001">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Mode of Payment</label>
+          <select id="modalModeOfPayment" class="form-input">
+            <option value="">— Not set —</option>
+            <option value="Bank">Bank</option>
+            <option value="Cash">Cash</option>
+            <option value="Cheque">Cheque</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Approval Status</label>
+          <select id="modalStatus" class="form-input">
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Payment Status</label>
+          <select id="modalPayment" class="form-input">
+            <option value="Unpaid">Unpaid</option>
+            <option value="Paid">Paid</option>
+            <option value="Partial">Partial</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs font-semibold mb-1">Remarks</label>
+          <textarea id="modalRemarks" rows="2" class="form-input"></textarea>
+        </div>
+        <div class="md:col-span-2 flex justify-end gap-3 pt-2">
+          <button type="button" id="cancelModalBtn" class="px-5 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition">Cancel</button>
+          <button type="submit" class="px-7 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== EMPLOYEE MODAL ==================== -->
+<div id="empModal" class="fixed inset-0 modal-overlay hidden flex items-center justify-center z-50 no-print">
+  <div class="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-3xl mx-4 max-h-[94vh] overflow-y-auto">
+    <div class="p-7">
+      <div class="flex justify-between items-center mb-5">
+        <h2 id="empModalTitle" class="text-xl font-display font-bold">Add Employee</h2>
+        <button id="closeEmpModalBtn" class="text-2xl text-zinc-400 hover:text-zinc-600">×</button>
+      </div>
+      <form id="empForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <input type="hidden" id="empEditIndex" value="-1">
+        <div class="lg:col-span-3 text-xs font-bold uppercase tracking-widest text-zinc-400 border-b dark:border-zinc-700 pb-1">Identity</div>
+        <div><label class="block text-xs font-semibold mb-1">Employee # <span class="text-red-500">*</span></label><input type="text" id="ef_empId" required class="form-input" placeholder="AECO-XXXX"></div>
+        <div><label class="block text-xs font-semibold mb-1">Full Name (English) <span class="text-red-500">*</span></label><input type="text" id="ef_name" required class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Full Name (Arabic)</label><input type="text" id="ef_nameAr" class="form-input" dir="rtl"></div>
+        <div class="lg:col-span-3 text-xs font-bold uppercase tracking-widest text-zinc-400 border-b dark:border-zinc-700 pb-1 mt-1">Position & Assignment</div>
+        <div><label class="block text-xs font-semibold mb-1">Designation <span class="text-red-500">*</span></label><input type="text" id="ef_position" required class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Rig / Department <span class="text-red-500">*</span></label><input type="text" id="ef_rig" required class="form-input" placeholder="SD-205"></div>
+        <div><label class="block text-xs font-semibold mb-1">Employee Status</label><select id="ef_status" class="form-input"><option>Active</option><option>On Probation</option><option>On Leave</option><option>Severance</option><option>On Notice</option></select></div>
+        <div><label class="block text-xs font-semibold mb-1">Payroll Status</label><select id="ef_payrollStatus" class="form-input"><option>Active</option><option>Severanced</option><option>On Leave</option></select></div>
+        <div><label class="block text-xs font-semibold mb-1">Employment Type</label><select id="ef_employmentType" class="form-input"><option>Full Time</option><option>Part Time</option><option>Contract</option></select></div>
+        <div><label class="block text-xs font-semibold mb-1">Rotation</label><input type="text" id="ef_rotation" class="form-input" placeholder="28/28 or 56/28"></div>
+        <div><label class="block text-xs font-semibold mb-1">Joining Date</label><input type="date" id="ef_joiningDate" class="form-input"></div>
+        <div class="lg:col-span-3 text-xs font-bold uppercase tracking-widest text-zinc-400 border-b dark:border-zinc-700 pb-1 mt-1">Personal Information</div>
+        <div><label class="block text-xs font-semibold mb-1">Gender</label><select id="ef_gender" class="form-input"><option value="">— Select —</option><option>Male</option><option>Female</option></select></div>
+        <div><label class="block text-xs font-semibold mb-1">Date of Birth</label><input type="date" id="ef_birthDate" class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Marital Status</label><select id="ef_maritalStatus" class="form-input"><option value="">— Select —</option><option>Single</option><option>Married</option><option>Divorced</option><option>Widowed</option></select></div>
+        <div><label class="block text-xs font-semibold mb-1">Religion</label><input type="text" id="ef_religion" class="form-input" list="religionList"><datalist id="religionList"><option value="Islam"><option value="Hinduism"><option value="Christianity"><option value="Buddhism"></datalist></div>
+        <div class="lg:col-span-3 text-xs font-bold uppercase tracking-widest text-zinc-400 border-b dark:border-zinc-700 pb-1 mt-1">Civil ID & Passport</div>
+        <div><label class="block text-xs font-semibold mb-1">Civil ID Number</label><input type="text" id="ef_civilId" class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Civil ID Expiry</label><input type="date" id="ef_civilIdExpiry" class="form-input"></div>
+        <div></div>
+        <div><label class="block text-xs font-semibold mb-1">Passport Number</label><input type="text" id="ef_passportNo" class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Passport Expiry</label><input type="date" id="ef_passportExpiry" class="form-input"></div>
+        <div></div>
+        <div class="lg:col-span-3 text-xs font-bold uppercase tracking-widest text-zinc-400 border-b dark:border-zinc-700 pb-1 mt-1">Salary & Contact</div>
+        <div><label class="block text-xs font-semibold mb-1">Basic Salary</label><input type="number" id="ef_basicSalary" class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Allowance</label><input type="number" id="ef_allowance" class="form-input" value="0"></div>
+        <div><label class="block text-xs font-semibold mb-1">Total Salary</label><input type="number" id="ef_totalSalary" class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Work Email</label><input type="email" id="ef_email" class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Mobile Number</label><input type="text" id="ef_mobile" class="form-input"></div>
+        <div><label class="block text-xs font-semibold mb-1">Bank / IBAN</label><input type="text" id="ef_iban" class="form-input"></div>
+        <div class="lg:col-span-3 flex justify-end gap-3 pt-3 border-t dark:border-zinc-700">
+          <button type="button" id="cancelEmpModalBtn" class="px-5 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition">Cancel</button>
+          <button type="submit" class="px-7 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition">Save Employee</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== VIEW RECORD MODAL ==================== -->
+<div id="viewModal" class="fixed inset-0 modal-overlay hidden flex items-center justify-center z-50 no-print">
+  <div class="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="p-7">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-xl font-display font-bold">Record Details</h2>
+        <button id="closeViewModalBtn" class="text-2xl text-zinc-400 hover:text-zinc-600">×</button>
+      </div>
+      <div id="viewModalContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SETTINGS MODAL ==================== -->
+<div id="settingsModal" class="fixed inset-0 modal-overlay hidden flex items-center justify-center z-50 no-print">
+  <div class="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md mx-4">
+    <div class="p-7">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-xl font-display font-bold">⚙️ Settings</h2>
+        <button id="closeSettingsBtn" class="text-2xl text-zinc-400 hover:text-zinc-600">×</button>
+      </div>
+      <div class="space-y-4">
+        <div><label class="block text-xs font-semibold mb-1">Global Daily Rate (per day)</label><input type="number" id="settingsDailyRate" class="form-input" value="450" min="1"></div>
+        <div><label class="block text-xs font-semibold mb-1">Company Name</label><input type="text" id="settingsCompany" class="form-input" value="AECO"></div>
+        <div>
+          <label class="block text-xs font-semibold mb-1">Currency</label>
+          <select id="settingsCurrency" class="form-input">
+            <option value="$">USD ($)</option>
+            <option value="KWD">KWD</option>
+            <option value="SAR">SAR</option>
+            <option value="AED">AED</option>
+            <option value="€">EUR (€)</option>
+            <option value="£">GBP (£)</option>
+          </select>
+        </div>
+
+        <!-- ====== FIREBASE REAL-TIME (PRIMARY) ====== -->
+        <div class="border-t dark:border-zinc-700 pt-4">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-5 h-5 bg-orange-500 rounded flex items-center justify-center"><i class="fas fa-fire text-white text-xs"></i></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Firebase Real-Time Database</span>
+            <span class="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full font-semibold">✓ Recommended</span>
+          </div>
+          <div class="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-xl p-3 mb-3 text-xs text-orange-800 dark:text-orange-200">
+            <p class="font-bold mb-1.5 flex items-center gap-1"><i class="fas fa-list-ol"></i> One-time setup (5 minutes):</p>
+            <ol class="space-y-1 list-decimal ml-4">
+              <li>Go to <strong>console.firebase.google.com</strong> → Sign in with Google</li>
+              <li>Click <strong>"Add project"</strong> → name it anything → click through</li>
+              <li>Left sidebar: click <strong>"Realtime Database"</strong></li>
+              <li>Click <strong>"Create Database"</strong> → choose any location → <strong>"Start in test mode"</strong> → Enable</li>
+              <li>Copy the URL shown (looks like <code class="bg-orange-100 dark:bg-orange-900 px-1 rounded">https://your-project-default-rtdb.firebaseio.com</code>)</li>
+              <li>Paste it below and click <strong>Connect & Save</strong></li>
+            </ol>
+          </div>
+          <label class="block text-xs font-semibold mb-1">Firebase Database URL <span class="text-red-500">*</span></label>
+          <input type="url" id="settingsFirebaseUrl" class="form-input font-mono text-xs" placeholder="https://your-project-default-rtdb.firebaseio.com">
+          <div class="flex gap-2 mt-2 flex-wrap">
+            <button id="testFirebaseBtn" class="flex items-center gap-1.5 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition">
+              <i class="fas fa-plug"></i> Test Connection
+            </button>
+            <button id="saveFirebaseBtn" class="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition">
+              <i class="fas fa-fire"></i> Connect & Save
+            </button>
+            <button id="pushToFirebaseBtn" class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition">
+              <i class="fas fa-upload"></i> Push All Data Now
+            </button>
+          </div>
+          <div id="firebaseStatusMsg" class="mt-2 text-xs hidden"></div>
+        </div>
+
+        <!-- Google Sheets Integration -->
+        <div class="border-t dark:border-zinc-700 pt-4">
+          <div class="flex items-center gap-2 mb-3">
+            <img src="https://www.gstatic.com/images/branding/product/1x/sheets_2020q4_48dp.png" class="w-5 h-5">
+            <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Google Sheets (optional backup)</span>
+          </div>
+          <label class="block text-xs font-semibold mb-1">Web App URL</label>
+          <input type="url" id="settingsSheetUrl" class="form-input font-mono text-xs" placeholder="https://script.google.com/macros/s/AKfy.../exec">
+          <div class="flex gap-2 mt-2">
+            <button id="testSheetBtn" class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition">
+              <i class="fas fa-plug"></i> Test Connection
+            </button>
+            <button id="syncNowBtn" class="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition">
+              <i class="fas fa-sync"></i> Sync Now
+            </button>
+            <button id="pullFromSheetBtn" class="flex items-center gap-1.5 px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-semibold transition">
+              <i class="fas fa-cloud-download-alt"></i> Pull from Sheet
+            </button>
+          </div>
+          <div id="sheetStatusMsg" class="mt-2 text-xs hidden"></div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button id="cancelSettingsBtn" class="px-5 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold">Cancel</button>
+          <button id="saveSettingsBtn" class="px-7 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== SETTINGS ====================
+let settings = { dailyRate:450, company:'AECO', currency:'$' };
+function loadSettings() { const s=localStorage.getItem('aeco_settings'); if(s) settings={...settings,...JSON.parse(s)}; }
+function saveSettings() { localStorage.setItem('aeco_settings',JSON.stringify(settings)); }
+function formatCost(n) { return settings.currency + Number(n).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}); }
+
+// ==================== DATA ====================
+const defaultOverstay = [
+  { rig:"AEC-254",empId:"AECO-1656",name:"MOHAMMAD HAZAA",designation:"RIG MANAGER",rotation:"28/28",startDate:"2025-11-18",endDate:"2025-12-17",reason:"NO RELIVER",reliever:"Reda Fathi",remarks:"COVERING AEC 253",status:"Approved",paymentStatus:"Paid",salary:"1200",amount:"1479.45" },
+  { rig:"AEC-254",empId:"AECO-1075",name:"HIRENDRA DILIPKUMAR",designation:"NTP",rotation:"28/28",startDate:"2025-12-13",endDate:"2025-12-17",reason:"RELIVER DMZ GP EXPIRED",reliever:"MOHAMED ALI",remarks:"Gate pass pending",status:"Pending",paymentStatus:"Unpaid",salary:"800" },
+  { rig:"AEC-254",empId:"AECO-1077",name:"VARKEY IPE",designation:"SR.ELECT",rotation:"28/28",startDate:"2025-12-16",endDate:"2025-12-17",reason:"GP EXPIRED",reliever:"ADNAN",remarks:"",status:"Pending",paymentStatus:"Unpaid",salary:"900" },
+  { rig:"AEC-254",empId:"AECO-1084",name:"SHOWKAT AHMAD BHAT",designation:"Driller",rotation:"28/28",startDate:"2025-12-04",endDate:"2025-12-17",reason:"GP EXPIRED",reliever:"AMER",remarks:"",status:"Approved",paymentStatus:"Paid",salary:"1200",amount:"560" },
+  { rig:"SD-201",empId:"AECO-027",name:"MOHINDER SINGH GUSSAIN",designation:"NTP",rotation:"28/28",startDate:"2025-12-23",endDate:"2026-01-18",reason:"Reliever Resigned",reliever:"Sathyanarayana",remarks:"",status:"Approved",paymentStatus:"Partial",salary:"950",amount:"700" },
+  { rig:"SD-205",empId:"AECO-741",name:"Krishnaprasad Vasudevan",designation:"FLOORMAN",rotation:"56/28",startDate:"2026-01-12",endDate:"2026-01-28",reason:"Crew shortage",reliever:"Mehulbhai",remarks:"Reliever no-show",status:"Pending",paymentStatus:"Unpaid",salary:"800" },
+  { rig:"SD-205",empId:"AECO-733",name:"Aavez Abbas Momin",designation:"ROUSTABOUT",rotation:"56/28",startDate:"2026-01-29",endDate:"2026-01-31",reason:"Cover overstay",reliever:"Krishnaprasad",remarks:"Promoted",status:"Approved",paymentStatus:"Paid",salary:"700",amount:"69.04" },
+  { rig:"SD-206",empId:"AECO-0778",name:"JINJO MANJALY",designation:"AMBULANCE DRIVER",rotation:"56/28",startDate:"2026-01-27",endDate:"2026-01-31",reason:"WAITING FOR RELIVER",reliever:"KALARIKKAL VASU",remarks:"RESIGNED",status:"Pending",paymentStatus:"Unpaid",salary:"750" },
+  { rig:"SD-202",empId:"AECO-818",name:"Nasarudheen Kolothodi",designation:"Medic",rotation:"56/28",startDate:"2025-11-08",endDate:"2025-11-25",reason:"Shortage of Medic",reliever:"Subeesh Mathew",remarks:"Terminated reliever",status:"Approved",paymentStatus:"Paid",salary:"1100",amount:"653.42" },
+  { rig:"SD-216",empId:"AECO-1346",name:"ASHWIN SUBHASH",designation:"ROUSTABOUT",rotation:"56/28",startDate:"2026-01-15",endDate:"2026-01-28",reason:"CREW SHORTAGE",reliever:"AKASH BABU",remarks:"",status:"Approved",paymentStatus:"Unpaid",salary:"700" },
+  { rig:"SD-216",empId:"AECO-1347",name:"YADHU MANOHARAN",designation:"ROUSTABOUT",rotation:"56/28",startDate:"2026-01-29",endDate:"2026-01-31",reason:"CREW SHORTAGE",reliever:"AKASH BABU",remarks:"",status:"Approved",paymentStatus:"Unpaid",salary:"700" },
+  { rig:"SD-218",empId:"AECO-1681",name:"NIKHIL BABU",designation:"MECH/ELEC HELPER",rotation:"56/28",startDate:"2026-01-03",endDate:"2026-01-17",reason:"ACCIDENT IN INDIA",reliever:"KASHYAP",remarks:"Covered SD-202",status:"Approved",paymentStatus:"Paid",salary:"750",amount:"369.86" }
+];
+
+let overstayRecords = [];
+let employeeMaster = [];
+let currentSort = { field:'startDate', direction:'desc' };
+let selectedRows = new Set();
+let currentPage = 1;
+let pageSize = 25;
+let currentFiltered = [];
+let charts = {};
+let auditLog = [];
+let _suggestedStartDate = '';
+
+// ==================== AUDIT LOG ====================
+function logAudit(action, rec) {
+  const entry = {
+    ts: new Date().toISOString(),
+    action,
+    empId: rec.empId||'',
+    name: rec.name||'',
+    rig: rec.rig||'',
+    details: `${rec.startDate||''} → ${rec.endDate||''} | ${rec.status||''} | ${rec.paymentStatus||''}`
+  };
+  auditLog.unshift(entry);
+  if(auditLog.length > 500) auditLog = auditLog.slice(0,500);
+  localStorage.setItem('aeco_audit_v1', JSON.stringify(auditLog));
+}
+function loadAuditLog() { const s=localStorage.getItem('aeco_audit_v1'); auditLog = s ? JSON.parse(s) : []; }
+function clearAuditLog() { if(confirm('Clear all audit log entries?')){auditLog=[];localStorage.removeItem('aeco_audit_v1');renderAuditLog();showToast('Audit log cleared','warn');} }
+function renderAuditLog() {
+  const tbody = document.getElementById('auditTableBody');
+  const noMsg = document.getElementById('noAuditMsg');
+  if(!auditLog.length) { tbody.innerHTML=''; noMsg.classList.remove('hidden'); return; }
+  noMsg.classList.add('hidden');
+  const actionColors = { ADD:'text-green-600', EDIT:'text-blue-600', DELETE:'text-red-600', IMPORT:'text-violet-600', BULK_APPROVE:'text-indigo-600', BULK_PAID:'text-emerald-600', BULK_DELETE:'text-red-600', MARK_PAID:'text-green-600' };
+  tbody.innerHTML = auditLog.map(e => {
+    const col = actionColors[e.action] || 'text-zinc-500';
+    const ts = new Date(e.ts).toLocaleString();
+    return `<tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800">
+      <td class="px-4 py-2.5 text-zinc-400 whitespace-nowrap">${ts}</td>
+      <td class="px-4 py-2.5 font-bold ${col}">${e.action}</td>
+      <td class="px-4 py-2.5 font-semibold">${e.name} <span class="font-mono text-zinc-400 text-xs">${e.empId}</span></td>
+      <td class="px-4 py-2.5"><span class="badge-rig">${e.rig||'—'}</span></td>
+      <td class="px-4 py-2.5 text-zinc-500">${e.details}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ==================== STORES ====================
+function saveEmployees() { localStorage.setItem('aeco_employees_v1', JSON.stringify(employeeMaster)); }
+function loadEmployees() { const s=localStorage.getItem('aeco_employees_v1'); employeeMaster = s ? JSON.parse(s) : []; }
+function saveToLocalStorage() { localStorage.setItem('aeco_overstay_pro_v3', JSON.stringify(overstayRecords)); }
+function loadFromLocalStorage() { const s=localStorage.getItem('aeco_overstay_pro_v3'); overstayRecords = s ? JSON.parse(s) : JSON.parse(JSON.stringify(defaultOverstay)); }
+
+// ==================== UTILS ====================
+function computeDays(s,e){ if(!s||!e) return 0; return Math.max(0, dayjs(e).diff(dayjs(s),'day')+1); }
+function calcDailyRate(rec){
+  const recSalary=parseFloat(rec.salary);
+  if(recSalary>0) return (recSalary*12)/365;
+  if(rec.empId){const emp=employeeMaster.find(e=>e.empId===rec.empId);if(emp){const b=parseFloat(emp.basicSalary);if(b>0) return (b*12)/365;}}
+  if(rec.dailyRate) return parseFloat(rec.dailyRate);
+  return settings.dailyRate;
+}
+function calcAmount(rec){ return computeDays(rec.startDate,rec.endDate)*calcDailyRate(rec); }
+function showToast(msg,type='success'){
+  const t=document.createElement('div');
+  t.className=`toast px-4 py-3 rounded-2xl shadow-2xl text-white flex items-center gap-2 text-xs font-semibold ${type==='success'?'bg-green-600':type==='warn'?'bg-amber-500':'bg-red-600'}`;
+  t.innerHTML=`<i class="fas ${type==='success'?'fa-check-circle':type==='warn'?'fa-exclamation-triangle':'fa-exclamation-circle'}"></i> ${msg}`;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+function daysUntil(dateStr){ if(!dateStr) return null; return dayjs(dateStr).diff(dayjs(),'day'); }
+function expiryClass(dateStr){ const d=daysUntil(dateStr); if(d===null) return ''; if(d<0) return 'exp-danger'; if(d<60) return 'exp-warn'; return ''; }
+function formatDate(val){ if(!val) return '—'; const d=dayjs(val); return d.isValid()?d.format('YYYY-MM-DD'):val; }
+function normalizeRig(raw){ if(!raw) return ''; return raw.trim().toUpperCase().replace(/\s+/g,'-').replace(/--+/g,'-'); }
+
+// ==================== NOTIFICATIONS ====================
+function renderNotifications(){
+  const container = document.getElementById('notificationsContainer');
+  const items = [];
+  const today = dayjs();
+
+  // Expiring Civil IDs (employees)
+  employeeMaster.forEach(e => {
+    const d = daysUntil(e.civilIdExpiry);
+    if(d !== null && d <= 90) {
+      items.push({ level: d < 0 ? 'critical' : d < 30 ? 'critical' : 'warning', icon: 'fa-id-card', title: `Civil ID ${d < 0 ? 'EXPIRED' : 'expiring soon'}: ${e.name}`, sub: `${e.empId} | ${e.rig} — Expiry: ${e.civilIdExpiry} (${d < 0 ? Math.abs(d)+' days ago' : d+' days left'})` });
+    }
+  });
+  // Expiring Passports
+  employeeMaster.forEach(e => {
+    const d = daysUntil(e.passportExpiry);
+    if(d !== null && d <= 90) {
+      items.push({ level: d < 0 ? 'critical' : d < 30 ? 'critical' : 'warning', icon: 'fa-passport', title: `Passport ${d < 0 ? 'EXPIRED' : 'expiring soon'}: ${e.name}`, sub: `${e.empId} | ${e.rig} — Expiry: ${e.passportExpiry} (${d < 0 ? Math.abs(d)+' days ago' : d+' days left'})` });
+    }
+  });
+  // Long-pending approvals (>14 days)
+  overstayRecords.filter(r=>r.status==='Pending').forEach(r => {
+    const age = today.diff(dayjs(r.startDate),'day');
+    if(age > 14) items.push({ level: age > 30 ? 'critical' : 'warning', icon: 'fa-clock', title: `Long-pending approval: ${r.name}`, sub: `${r.empId} | ${r.rig} — ${r.startDate} → ${r.endDate} | ${age} days since start` });
+  });
+  // Old unpaid records (>60 days)
+  overstayRecords.filter(r=>r.paymentStatus!=='Paid').forEach(r => {
+    const age = today.diff(dayjs(r.endDate),'day');
+    if(age > 60) items.push({ level: 'critical', icon: 'fa-money-bill-wave', title: `Overdue payment: ${r.name}`, sub: `${r.empId} | ${r.rig} — Ended: ${r.endDate} (${age} days overdue) | Cost: ${formatCost(calcAmount(r))}` });
+    else if(age > 30) items.push({ level: 'warning', icon: 'fa-exclamation-circle', title: `Aging unpaid: ${r.name}`, sub: `${r.empId} | ${r.rig} — Ended: ${r.endDate} (${age} days unpaid) | Cost: ${formatCost(calcAmount(r))}` });
+  });
+  // Duplicates
+  const dups = findDuplicateGroups(overstayRecords);
+  if(dups.length > 0) items.push({ level: 'critical', icon: 'fa-copy', title: `${dups.length} duplicate overstay group${dups.length>1?'s':''} detected`, sub: `${dups.reduce((s,g)=>s+g.length,0)} records affected. Review Duplicates tab.` });
+
+  // Update badge
+  const badge = document.getElementById('notifTabBadge');
+  const criticalCount = items.filter(i=>i.level==='critical').length;
+  if(criticalCount > 0) { badge.textContent=criticalCount; badge.classList.remove('hidden'); } else { badge.classList.add('hidden'); }
+
+  if(!items.length) {
+    container.innerHTML = `<div class="text-center py-16 text-zinc-400"><i class="fas fa-check-circle text-4xl mb-3 text-green-400 opacity-60"></i><p class="text-base font-semibold text-green-600 dark:text-green-400">All clear!</p><p class="text-sm mt-1">No alerts at this time.</p></div>`;
+    return;
+  }
+  const levelConfig = { critical: { cls:'notif-critical', bg:'bg-red-50 dark:bg-red-950', tc:'text-red-700 dark:text-red-300', ic:'text-red-500' }, warning: { cls:'notif-warning', bg:'bg-amber-50 dark:bg-amber-950', tc:'text-amber-700 dark:text-amber-300', ic:'text-amber-500' }, info: { cls:'notif-info', bg:'bg-blue-50 dark:bg-blue-950', tc:'text-blue-700 dark:text-blue-300', ic:'text-blue-500' } };
+  container.innerHTML = items.map(item => {
+    const cfg = levelConfig[item.level] || levelConfig.info;
+    return `<div class="notif-item ${cfg.cls} ${cfg.bg} rounded-2xl px-5 py-4 flex items-start gap-4">
+      <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.level==='critical'?'bg-red-500':item.level==='warning'?'bg-amber-500':'bg-blue-500'}">
+        <i class="fas ${item.icon} text-white text-sm"></i>
+      </span>
+      <div>
+        <p class="font-bold text-sm ${cfg.tc}">${item.title}</p>
+        <p class="text-xs ${cfg.tc} opacity-80 mt-0.5">${item.sub}</p>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ==================== EMPLOYEE IMPORT (AECO FORMAT) ====================
+function parseDesignation(raw){ if(!raw||raw.trim()==='') return ''; const parts=raw.split('|'); if(parts.length>=2) return parts.slice(1).join('|').trim(); return raw.trim(); }
+function importEmployeesFromAECO(rows){
+  const imported=[];let skipped=0;
+  rows.forEach(row=>{
+    const empCode=String(row['Code']||'').trim();
+    let name=String(row['Employee.1']||'').trim();
+    if(!name&&row['Employee']){const parts=String(row['Employee']).split('|');if(parts.length>=2) name=parts.slice(1).join('|').trim();}
+    if(!empCode||!name){skipped++;return;}
+    imported.push({ empId:empCode,name,nameAr:String(row['Employee(Arabic)']||'').trim(),position:parseDesignation(String(row['Govt Designation']||'')),rig:String(row['Department Level 1']||'').trim(),status:String(row['Employee Status']||'Active').trim(),payrollStatus:String(row['Employee Payroll Status']||'Active').trim(),joiningDate:formatDate(row['Joining Date']),gender:String(row['Gender']||'').trim(),birthDate:formatDate(row['Birth Date']),age:String(row['Age']||'').trim(),basicSalary:String(row['Basic']||'').trim(),allowance:String(row['Allowance']||'0').trim(),totalSalary:String(row['Total']||'').trim(),email:String(row['Work Email']||'').trim(),mobile:String(row['Mobile Number']||'').trim(),civilId:String(row['Civil Id Number']||'').trim(),civilIdExpiry:formatDate(row['Civil Id Expiry Date']),passportNo:String(row['Passport Number']||'').trim(),passportExpiry:formatDate(row['Passport Expiry Date']),maritalStatus:String(row['Marital Status']||'').trim(),religion:String(row['Religion']||'').trim(),employmentType:String(row['Employment Type']||'Full Time').trim(),iban:String(row['IBAN Number']||'').trim(),rotation:'' });
+  });
+  return { imported, skipped };
+}
+
+function getEmpStatusClass(s){ if(!s) return ''; const m={'Active':'emp-active','On Probation':'emp-probation','On Leave':'emp-leave','Severance':'emp-severance','On Notice':'emp-notice'}; return m[s]||''; }
+function renderEmployees(){
+  const search=(document.getElementById('empSearch').value||'').toLowerCase().trim();
+  const statusF=document.getElementById('empStatusFilter').value;
+  const rigF=document.getElementById('empRigFilter').value;
+  let filtered=employeeMaster.filter(e=>{
+    if(statusF!=='all'&&e.status!==statusF) return false;
+    if(rigF!=='all'&&e.rig!==rigF) return false;
+    if(search){const hay=`${e.empId} ${e.name} ${e.position} ${e.rig} ${e.email}`.toLowerCase();if(!hay.includes(search)) return false;}
+    return true;
+  });
+  document.getElementById('empCount').textContent=`${filtered.length} / ${employeeMaster.length} employees`;
+  const overstayCount={},overstayDays={};
+  overstayRecords.forEach(r=>{overstayCount[r.empId]=(overstayCount[r.empId]||0)+1;overstayDays[r.empId]=(overstayDays[r.empId]||0)+computeDays(r.startDate,r.endDate);});
+  const tbody=document.getElementById('employeeTableBody');tbody.innerHTML='';
+  const noMsg=document.getElementById('noEmpMsg');
+  if(!filtered.length){noMsg.classList.remove('hidden');return;}noMsg.classList.add('hidden');
+  filtered.forEach((e,fi)=>{
+    const globalIdx=employeeMaster.indexOf(e);
+    const row=tbody.insertRow();row.className='hover:bg-zinc-50 dark:hover:bg-zinc-800 transition';
+    const cnt=overstayCount[e.empId]||0,dys=overstayDays[e.empId]||0;
+    const ciExp=expiryClass(e.civilIdExpiry),ppExp=expiryClass(e.passportExpiry);
+    const ciIcon=ciExp==='exp-danger'?'<i class="fas fa-exclamation-circle text-red-500"></i>':ciExp==='exp-warn'?'<i class="fas fa-exclamation-triangle text-amber-400"></i>':'';
+    const ppIcon=ppExp==='exp-danger'?'<i class="fas fa-exclamation-circle text-red-500"></i>':ppExp==='exp-warn'?'<i class="fas fa-exclamation-triangle text-amber-400"></i>':'';
+    row.innerHTML=`<td class="px-3 py-2.5 font-mono text-zinc-500 whitespace-nowrap">${e.empId||'—'}</td><td class="px-3 py-2.5 font-semibold whitespace-nowrap max-w-[180px] truncate" title="${e.name}">${e.name}</td><td class="px-3 py-2.5 text-zinc-600 dark:text-zinc-400 max-w-[130px] truncate">${e.position||'—'}</td><td class="px-3 py-2.5"><span class="badge-rig">${e.rig||'—'}</span></td><td class="px-3 py-2.5"><span class="emp-badge ${getEmpStatusClass(e.status)}">${e.status||'—'}</span></td><td class="px-3 py-2.5 whitespace-nowrap text-zinc-500">${e.joiningDate||'—'}</td><td class="px-3 py-2.5 font-mono text-zinc-500 text-xs">${e.civilId||'—'}</td><td class="px-3 py-2.5 whitespace-nowrap ${ciExp}">${e.civilIdExpiry||'—'}${ciIcon}</td><td class="px-3 py-2.5 font-mono text-zinc-500 text-xs">${e.passportNo||'—'}</td><td class="px-3 py-2.5 whitespace-nowrap ${ppExp}">${e.passportExpiry||'—'}${ppIcon}</td><td class="px-3 py-2.5 text-right font-medium">${e.basicSalary?Number(e.basicSalary).toLocaleString():'—'}</td><td class="px-3 py-2.5 text-right font-semibold">${e.totalSalary?Number(e.totalSalary).toLocaleString():'—'}</td><td class="px-3 py-2.5 text-blue-600 dark:text-blue-400 text-xs max-w-[130px] truncate">${e.email||'—'}</td><td class="px-3 py-2.5 text-center"><span class="${cnt>0?'font-bold text-red-600':'text-zinc-400'}">${cnt||'—'}</span></td><td class="px-3 py-2.5 text-center"><span class="${dys>0?'font-bold text-orange-500':'text-zinc-400'}">${dys||'—'}</span></td><td class="px-3 py-2.5 text-center no-print space-x-2"><button onclick="editEmployee(${globalIdx})" class="text-blue-600 hover:text-blue-700" title="Edit"><i class="fas fa-edit"></i></button><button onclick="deleteEmployee(${globalIdx})" class="text-red-600 hover:text-red-700" title="Delete"><i class="fas fa-trash"></i></button></td>`;
+  });
+}
+function populateEmpFilters(){
+  const rigs=[...new Set(employeeMaster.map(e=>e.rig).filter(Boolean))].sort();
+  document.getElementById('empRigFilter').innerHTML='<option value="all">All Rigs</option>'+rigs.map(r=>`<option value="${r}">${r}</option>`).join('');
+}
+function openEmpModal(emp=null,idx=-1){
+  document.getElementById('empEditIndex').value=idx;
+  const fields=['empId','name','nameAr','position','rig','status','payrollStatus','employmentType','rotation','joiningDate','gender','birthDate','maritalStatus','religion','civilId','civilIdExpiry','passportNo','passportExpiry','basicSalary','allowance','totalSalary','email','mobile','iban'];
+  if(emp){fields.forEach(f=>{const el=document.getElementById('ef_'+f);if(el)el.value=emp[f]||'';});document.getElementById('empModalTitle').textContent='Edit Employee';}
+  else{document.getElementById('empForm').reset();document.getElementById('ef_status').value='Active';document.getElementById('ef_payrollStatus').value='Active';document.getElementById('ef_employmentType').value='Full Time';document.getElementById('empModalTitle').textContent='Add Employee';}
+  document.getElementById('empModal').classList.remove('hidden');document.getElementById('empModal').classList.add('flex');
+}
+function closeEmpModal(){document.getElementById('empModal').classList.add('hidden');document.getElementById('empModal').classList.remove('flex');}
+document.getElementById('empForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const emp={empId:document.getElementById('ef_empId').value.trim(),name:document.getElementById('ef_name').value.trim(),nameAr:document.getElementById('ef_nameAr').value.trim(),position:document.getElementById('ef_position').value.trim(),rig:document.getElementById('ef_rig').value.trim(),status:document.getElementById('ef_status').value,payrollStatus:document.getElementById('ef_payrollStatus').value,employmentType:document.getElementById('ef_employmentType').value,rotation:document.getElementById('ef_rotation').value.trim(),joiningDate:document.getElementById('ef_joiningDate').value,gender:document.getElementById('ef_gender').value,birthDate:document.getElementById('ef_birthDate').value,maritalStatus:document.getElementById('ef_maritalStatus').value,religion:document.getElementById('ef_religion').value.trim(),civilId:document.getElementById('ef_civilId').value.trim(),civilIdExpiry:document.getElementById('ef_civilIdExpiry').value,passportNo:document.getElementById('ef_passportNo').value.trim(),passportExpiry:document.getElementById('ef_passportExpiry').value,basicSalary:document.getElementById('ef_basicSalary').value,allowance:document.getElementById('ef_allowance').value||'0',totalSalary:document.getElementById('ef_totalSalary').value,email:document.getElementById('ef_email').value.trim(),mobile:document.getElementById('ef_mobile').value.trim(),iban:document.getElementById('ef_iban').value.trim()};
+  const idx=parseInt(document.getElementById('empEditIndex').value);
+  if(idx>=0){employeeMaster[idx]=emp;showToast("Employee updated");}else{employeeMaster.push(emp);showToast("Employee added");}
+  saveEmployees();closeEmpModal();renderEmployees();populateEmpFilters();updateAutocompleteLists();
+});
+window.editEmployee=(idx)=>openEmpModal(employeeMaster[idx],idx);
+window.deleteEmployee=(idx)=>{if(confirm(`Delete ${employeeMaster[idx].name}?`)){employeeMaster.splice(idx,1);saveEmployees();renderEmployees();populateEmpFilters();showToast("Employee deleted","error");}};
+document.getElementById('importEmpBtn').addEventListener('click',()=>{
+  const input=document.createElement('input');input.type='file';input.accept='.xlsx,.xls,.csv';
+  input.onchange=async(ev)=>{const file=ev.target.files[0];if(!file) return;const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:'array',cellDates:true});const sheet=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});const{imported,skipped}=importEmployeesFromAECO(rows);if(imported.length>0){let added=0,updated=0;imported.forEach(ne=>{const existing=employeeMaster.findIndex(e=>e.empId===ne.empId);if(existing>=0){employeeMaster[existing]=ne;updated++;}else{employeeMaster.push(ne);added++;}});saveEmployees();renderEmployees();populateEmpFilters();updateAutocompleteLists();logAudit('IMPORT',{empId:'BULK',name:`${imported.length} employees`,rig:'',startDate:'',endDate:'',status:'',paymentStatus:''});showToast(`✓ ${added} added, ${updated} updated${skipped?' ('+skipped+' skipped)':''}`);}else{showToast("No valid rows found.","error");}};
+  input.click();
+});
+document.getElementById('downloadEmpTemplateBtn').addEventListener('click',()=>{
+  const template=[{'Code':'AECO-1001','Employee':'AECO-1001 | John Doe','Employee.1':'John Doe','Employee(Arabic)':'جون دو','Govt Designation':'GD009 | Driller','Department Level 1':'SD-205','Employee Status':'Active','Employee Payroll Status':'Active','Employment Type':'Full Time','Joining Date':'2024-01-15','Gender':'Male','Birth Date':'1985-06-20','Age':'39','Marital Status':'Married','Religion':'Hinduism','Civil Id Number':'285062012345','Civil Id Expiry Date':'2026-12-31','Passport Number':'A1234567','Passport Expiry Date':'2030-06-20','Basic':'800','Allowance':'0','Total':'800','Work Email':'aeco-1001@aeco.com','Mobile Number':'50012345','IBAN Number':'KW00XXXX0000000000000000000000','Bank Account Number':'012345678'}];
+  const ws=XLSX.utils.json_to_sheet(template);const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws,'Employee_Template');XLSX.writeFile(wb2,'AECO_Employee_Import_Template.xlsx');showToast("Template downloaded");
+});
+document.getElementById('exportEmpBtn').addEventListener('click',()=>{
+  const data=employeeMaster.map(e=>({'Employee #':e.empId,'Name':e.name,'Name (Arabic)':e.nameAr,'Designation':e.position,'Rig':e.rig,'Status':e.status,'Payroll Status':e.payrollStatus,'Joining Date':e.joiningDate,'Gender':e.gender,'Birth Date':e.birthDate,'Marital Status':e.maritalStatus,'Religion':e.religion,'Civil ID':e.civilId,'Civil ID Expiry':e.civilIdExpiry,'Passport #':e.passportNo,'Passport Expiry':e.passportExpiry,'Basic Salary':e.basicSalary,'Allowance':e.allowance,'Total Salary':e.totalSalary,'Email':e.email,'Mobile':e.mobile,'IBAN':e.iban,'Employment Type':e.employmentType}));
+  const ws=XLSX.utils.json_to_sheet(data);const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws,'Employee Directory');XLSX.writeFile(wb2,`AECO_Employees_${dayjs().format('YYYY-MM-DD')}.xlsx`);showToast("Directory exported");
+});
+document.getElementById('addEmpBtn').onclick=()=>openEmpModal();
+document.getElementById('closeEmpModalBtn').onclick=closeEmpModal;
+document.getElementById('cancelEmpModalBtn').onclick=closeEmpModal;
+document.getElementById('dismissEmpHelp').onclick=()=>{document.getElementById('empImportHelp').style.display='none';};
+['empSearch','empStatusFilter','empRigFilter'].forEach(id=>document.getElementById(id).addEventListener('input',renderEmployees));
+
+// ==================== AUTOCOMPLETE ====================
+function updateAutocompleteLists(){
+  const rigs=[...new Set(overstayRecords.map(r=>r.rig).concat(employeeMaster.map(e=>e.rig)).filter(Boolean))].sort();
+  document.getElementById('rigList').innerHTML=rigs.map(r=>`<option value="${r}">`).join('');
+  document.getElementById('empIdList').innerHTML=employeeMaster.map(e=>`<option value="${e.empId}">`).join('');
+  document.getElementById('empNameList').innerHTML=employeeMaster.map(e=>`<option value="${e.name}">`).join('');
+}
+function autoFillFromEmployee(emp){
+  if(!emp) return;
+  document.getElementById('modalName').value=emp.name||'';
+  document.getElementById('modalDesignation').value=emp.position||'';
+  document.getElementById('modalRig').value=emp.rig||'';
+  document.getElementById('modalCivilId').value=emp.civilId||'';
+  const basic=parseFloat(emp.basicSalary);
+  if(basic>0){document.getElementById('modalSalary').value=basic;const note=document.getElementById('modalSalaryNote');note.textContent=`ℹ️ Salary auto-filled from directory (${emp.empId})`;note.classList.remove('hidden');}
+  updatePreview();
+}
+
+// ==================== LAST OS AUTO-FILL ====================
+function loadLastOSForEmployee(empId) {
+  const editIdx = parseInt(document.getElementById('editIndex').value);
+  // Get all records for this employee, excluding the one being edited
+  const empRecs = overstayRecords
+    .map((r, i) => ({ r, i }))
+    .filter(({ r, i }) => r.empId === empId && i !== editIdx && r.endDate);
+
+  const banner = document.getElementById('lastOSBanner');
+  const content = document.getElementById('lastOSContent');
+  const suggestBtn = document.getElementById('applySuggestedDate');
+  _suggestedStartDate = '';
+
+  if (!empId || !empRecs.length) {
+    banner.classList.add('hidden');
+    suggestBtn.classList.add('hidden');
+    return;
+  }
+
+  // Sort by endDate descending to find the last one
+  empRecs.sort((a, b) => b.r.endDate.localeCompare(a.r.endDate));
+  const lastRec = empRecs[0].r;
+
+  // Suggest next start date = lastRec.endDate + 1 day
+  const suggested = dayjs(lastRec.endDate).add(1, 'day').format('YYYY-MM-DD');
+  _suggestedStartDate = suggested;
+
+  // Build HTML for the history
+  const rows = empRecs.slice(0, 5).map(({ r }) => {
+    const days = computeDays(r.startDate, r.endDate);
+    const pClass = r.paymentStatus === 'Paid' ? 'text-green-600 font-bold' : r.paymentStatus === 'Partial' ? 'text-amber-500 font-bold' : 'text-red-500 font-bold';
+    const sClass = r.status === 'Approved' ? 'text-green-600' : r.status === 'Pending' ? 'text-amber-500' : 'text-red-500';
+    return `<div class="flex items-center gap-3 py-1 border-b border-indigo-100 dark:border-indigo-900 last:border-0">
+      <span class="badge-rig text-xs">${r.rig}</span>
+      <span class="text-indigo-600 dark:text-indigo-300 font-mono">${r.startDate} → ${r.endDate}</span>
+      <span class="text-zinc-500">(${days}d)</span>
+      <span class="${pClass}">${r.paymentStatus}</span>
+      <span class="${sClass} text-xs">${r.status}</span>
+      ${r.amount ? `<span class="text-zinc-500">${settings.currency}${Number(r.amount).toLocaleString()}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  content.innerHTML = rows + `<div class="mt-2 pt-1 flex items-center gap-2 flex-wrap">
+    <span class="text-indigo-500"><i class="fas fa-lightbulb"></i> Last OS ended <strong>${lastRec.endDate}</strong></span>
+    <span class="text-indigo-700 dark:text-indigo-300 font-semibold">→ Suggested new Start Date: <strong class="text-green-700 dark:text-green-400">${suggested}</strong></span>
+  </div>`;
+
+  banner.classList.remove('hidden');
+
+  // Show / update the "Apply Suggested Date" button
+  suggestBtn.classList.remove('hidden');
+  suggestBtn.style.display = 'flex';
+  // Remove old listener and add fresh one
+  suggestBtn.replaceWith(suggestBtn.cloneNode(true));
+  document.getElementById('applySuggestedDate').addEventListener('click', () => {
+    document.getElementById('modalStart').value = _suggestedStartDate;
+    updatePreview();
+    checkFormDuplicates();
+    showToast(`Start date set to ${_suggestedStartDate} ✓`);
+  });
+}
+
+// ==================== REAL-TIME FORM DUPLICATE CHECK ====================
+function checkFormDuplicates() {
+  const empId = document.getElementById('modalEmpId').value.trim();
+  const startDate = document.getElementById('modalStart').value;
+  const endDate = document.getElementById('modalEnd').value;
+  const editIdx = parseInt(document.getElementById('editIndex').value);
+  const warning = document.getElementById('formDupWarning');
+  const content = document.getElementById('formDupContent');
+
+  // Reset field styling
+  document.getElementById('modalStart').style.borderColor = '';
+  document.getElementById('modalEnd').style.borderColor = '';
+
+  if (!empId || !startDate || !endDate) {
+    warning.classList.add('hidden');
+    return;
+  }
+
+  const fakeRec = { empId, startDate, endDate };
+  const overlaps = overstayRecords
+    .map((r, i) => ({ r, i }))
+    .filter(({ r, i }) => {
+      if (i === editIdx) return false;
+      return r.empId === empId && periodsOverlap(fakeRec, r);
+    });
+
+  if (!overlaps.length) {
+    warning.classList.add('hidden');
+    return;
+  }
+
+  // Highlight date fields in red
+  document.getElementById('modalStart').style.borderColor = '#f43f5e';
+  document.getElementById('modalEnd').style.borderColor = '#f43f5e';
+
+  content.innerHTML = overlaps.map(({ r, i }) => {
+    const days = computeDays(r.startDate, r.endDate);
+    const overlapStart = startDate > r.startDate ? startDate : r.startDate;
+    const overlapEnd = endDate < r.endDate ? endDate : r.endDate;
+    const overlapDays = computeDays(overlapStart, overlapEnd);
+    const pClass = r.paymentStatus === 'Paid' ? 'text-green-600' : 'text-red-500';
+    return `<div class="flex items-center gap-2 flex-wrap">
+      <span class="badge-rig">${r.rig}</span>
+      <span class="font-semibold">${r.name}</span>
+      <span class="font-mono text-rose-600">${r.startDate} → ${r.endDate}</span>
+      <span class="text-zinc-500">(${days}d)</span>
+      <span class="${pClass} font-bold">${r.paymentStatus}</span>
+      <span class="bg-rose-200 dark:bg-rose-800 text-rose-800 dark:text-rose-200 px-1.5 py-0.5 rounded font-bold">${overlapDays}d overlap</span>
+      <button type="button" onclick="editRecord(${i});closeModal()" class="text-blue-600 hover:underline text-xs">View</button>
+    </div>`;
+  }).join('');
+
+  warning.classList.remove('hidden');
+}
+
+document.getElementById('modalEmpId').addEventListener('change', function(){
+  const emp = employeeMaster.find(e => e.empId === this.value.trim());
+  autoFillFromEmployee(emp);
+  loadLastOSForEmployee(this.value.trim());
+  checkFormDuplicates();
+});
+document.getElementById('modalName').addEventListener('change', function(){
+  const emp = employeeMaster.find(e => e.name === this.value.trim());
+  if(emp){
+    document.getElementById('modalEmpId').value = emp.empId;
+    autoFillFromEmployee(emp);
+    loadLastOSForEmployee(emp.empId);
+    checkFormDuplicates();
+  }
+});
+
+// ==================== DUPLICATE DETECTION ====================
+function periodsOverlap(a,b){ return a.startDate<=b.endDate&&a.endDate>=b.startDate; }
+function findDuplicateGroups(records){
+  const groups=[];const visited=new Set();
+  records.forEach((rec,idx)=>{
+    if(visited.has(idx)) return;
+    const group=[{rec,idx}];
+    records.forEach((other,oidx)=>{
+      if(oidx===idx) return;
+      if(other.empId===rec.empId&&periodsOverlap(rec,other)){group.push({rec:other,idx:oidx});visited.add(oidx);}
+    });
+    if(group.length>1){visited.add(idx);groups.push(group);}
+  });
+  return groups;
+}
+function calcOverlapDays(a,b){
+  const start=a.startDate>b.startDate?a.startDate:b.startDate;
+  const end=a.endDate<b.endDate?a.endDate:b.endDate;
+  return Math.max(0,computeDays(start,end));
+}
+function getDuplicateIndexSet(records){
+  const s=new Set();
+  records.forEach((rec,idx)=>{records.forEach((other,oidx)=>{if(oidx!==idx&&other.empId===rec.empId&&periodsOverlap(rec,other)){s.add(idx);s.add(oidx);}});});
+  return s;
+}
+function renderDuplicatesPanel(){
+  const groups=findDuplicateGroups(overstayRecords);
+  const totalRecs=groups.reduce((s,g)=>s+g.length,0);
+  let totalOverlapDays=0,totalCost=0;
+  groups.forEach(group=>{group.forEach(({rec,idx})=>{group.forEach(other=>{if(other.idx!==idx){const od=calcOverlapDays(rec,other.rec);totalOverlapDays+=od;totalCost+=od*calcDailyRate(rec);}});});});
+  totalOverlapDays=Math.floor(totalOverlapDays/2);totalCost/=2;
+  document.getElementById('dupSummaryGroups').textContent=groups.length;
+  document.getElementById('dupSummaryRecords').textContent=totalRecs;
+  document.getElementById('dupSummaryDays').textContent=totalOverlapDays;
+  document.getElementById('dupSummaryCost').textContent=formatCost(totalCost);
+  const container=document.getElementById('dupGroupsContainer');
+  if(!groups.length){container.innerHTML=`<div class="text-center py-16 text-zinc-400"><i class="fas fa-check-circle text-4xl mb-3 text-green-400 opacity-60"></i><p class="text-base font-semibold text-green-600 dark:text-green-400">No duplicates found</p></div>`;return;}
+  container.innerHTML=groups.map((group,gi)=>{
+    const rows=group.map(({rec,idx})=>{
+      const d=computeDays(rec.startDate,rec.endDate);
+      const sc=rec.status==='Pending'?'status-pending':rec.status==='Approved'?'status-approved':'status-rejected';
+      const pc=rec.paymentStatus==='Paid'?'payment-paid':rec.paymentStatus==='Partial'?'payment-partial':'payment-unpaid';
+      // Calculate overlap days with each other member of the group
+      let maxOverlap=0;
+      group.forEach(other=>{if(other.idx!==idx){const od=calcOverlapDays(rec,other.rec);if(od>maxOverlap)maxOverlap=od;}});
+      const overlapCell=maxOverlap>0?`<td class="px-4 py-2.5 text-center"><span class="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded font-bold">${maxOverlap}d</span></td>`:`<td class="px-4 py-2.5 text-center text-zinc-300">—</td>`;
+      return `<tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800"><td class="px-4 py-2.5 font-mono text-zinc-400">${idx+1}</td><td class="px-4 py-2.5 font-semibold">${rec.name}</td><td class="px-4 py-2.5 font-mono text-xs text-zinc-500">${rec.empId}</td><td class="px-4 py-2.5 text-xs">${rec.startDate} → ${rec.endDate}</td><td class="px-4 py-2.5 text-center font-bold">${d}</td>${overlapCell}<td class="px-4 py-2.5"><span class="status-badge ${sc}">${rec.status}</span></td><td class="px-4 py-2.5"><span class="payment-badge ${pc}">${rec.paymentStatus}</span></td><td class="px-4 py-2.5 no-print space-x-2"><button onclick="editRecord(${idx})" class="text-blue-600 text-xs hover:underline">Edit</button><button onclick="if(confirm('Delete this record?')){const r=overstayRecords[${idx}];logAudit('DELETE',r);overstayRecords.splice(${idx},1);saveToLocalStorage();refreshAll();showToast('Deleted','error');}" class="text-red-500 text-xs hover:underline">Delete</button></td></tr>`;
+    }).join('');
+    const empName=group[0].rec.name, empId=group[0].rec.empId;
+    return `<div class="dup-group-card bg-white dark:bg-zinc-900 rounded-2xl shadow mb-4 overflow-hidden"><div class="px-5 py-4 bg-rose-50 dark:bg-rose-950 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><span class="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center text-white text-xs font-bold">${gi+1}</span><div><p class="font-bold text-rose-700 dark:text-rose-300">Duplicate Group ${gi+1}</p><p class="text-xs text-rose-500">${empName} (${empId}) — ${group.length} overlapping records</p></div></div><div class="flex gap-2 no-print"><button onclick="switchTab('overstay');document.getElementById('searchName').value='${empId}';renderOverstayTable();" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-semibold"><i class='fas fa-filter mr-1'></i>Filter in Table</button></div></div><div class="overflow-x-auto"><table class="min-w-full text-xs divide-y dark:divide-zinc-700"><thead class="bg-zinc-50 dark:bg-zinc-950"><tr><th class="px-4 py-2 text-left text-zinc-400 font-semibold">Rec#</th><th class="px-4 py-2 text-left text-zinc-400 font-semibold">Name</th><th class="px-4 py-2 text-left text-zinc-400 font-semibold">Emp#</th><th class="px-4 py-2 text-left text-zinc-400 font-semibold">Period</th><th class="px-4 py-2 text-center text-zinc-400 font-semibold">Days</th><th class="px-4 py-2 text-center text-zinc-400 font-semibold">Overlap</th><th class="px-4 py-2 text-left text-zinc-400 font-semibold">Approval</th><th class="px-4 py-2 text-left text-zinc-400 font-semibold">Payment</th><th class="px-4 py-2 no-print text-zinc-400">Actions</th></tr></thead><tbody class="divide-y dark:divide-zinc-700">${rows}</tbody></table></div></div>`;
+  }).join('');
+}
+function checkAndNotifyDuplicates(){
+  const groups=findDuplicateGroups(overstayRecords);
+  const count=groups.length;
+  const totalRecs=groups.reduce((s,g)=>s+g.length,0);
+  document.getElementById('kpiDupCount').textContent=count;
+  const badge=document.getElementById('dupTabBadge');
+  if(count>0){badge.textContent=count;badge.classList.remove('hidden');}else{badge.classList.add('hidden');}
+  const inlineBadge=document.getElementById('inlinedupBadge');
+  if(count>0){inlineBadge.textContent=count;inlineBadge.classList.remove('hidden');}else{inlineBadge.classList.add('hidden');}
+  const banner=document.getElementById('dupAlertBanner');
+  if(count>0){document.getElementById('dupAlertText').textContent=`⚠️ ${count} duplicate group${count>1?'s':''} detected — ${totalRecs} records with overlapping periods.`;banner.classList.remove('hidden');}else{banner.classList.add('hidden');}
+}
+
+// ==================== EXPORT DUPLICATE REPORT ====================
+document.getElementById('exportDupBtn').addEventListener('click',()=>{
+  const groups=findDuplicateGroups(overstayRecords);
+  if(!groups.length) return showToast("No duplicates to export","error");
+  const rows=[];
+  groups.forEach((group,gi)=>{group.forEach(({rec,idx})=>{let overlapWith=[],overlapDays=0;group.forEach(other=>{if(other.idx===idx) return;const od=calcOverlapDays(rec,other.rec);if(od>0){overlapWith.push(other.rec.startDate+'→'+other.rec.endDate);overlapDays+=od;}});rows.push({'Duplicate Group':`Group ${gi+1}`,'Rig#':rec.rig,'Employee#':rec.empId,'Name':rec.name,'Civil ID#':rec.civilId||'','Designation':rec.designation,'Overstay Start Date':rec.startDate,'Overstay End Date':rec.endDate,'Total Overstayed\nDays Per Month':computeDays(rec.startDate,rec.endDate),'Overlap Days':overlapDays,'Overlaps With':overlapWith.join('; '),'Reason for the Overstay':rec.reason,'Reliever Name':rec.reliever,'Approval Status':rec.status,'Payment Status':rec.paymentStatus,'Salary':rec.salary||'','Amount':rec.amount||'','Mode of Payment':rec.modeOfPayment||'','Remarks':rec.remarks});});rows.push({});});
+  const ws=XLSX.utils.json_to_sheet(rows);const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws,'Duplicate Report');XLSX.writeFile(wb2,`AECO_Duplicates_${dayjs().format('YYYY-MM-DD')}.xlsx`);showToast(`Exported — ${groups.length} groups`);
+});
+
+// ==================== QUICK DATE FILTERS ====================
+function setQuickFilter(type, btn) {
+  document.querySelectorAll('.qf-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  const today = dayjs();
+  let from='',to='',status='all',payment='all';
+  if(type==='thismonth'){from=today.startOf('month').format('YYYY-MM-DD');to=today.endOf('month').format('YYYY-MM-DD');}
+  else if(type==='lastmonth'){from=today.subtract(1,'month').startOf('month').format('YYYY-MM-DD');to=today.subtract(1,'month').endOf('month').format('YYYY-MM-DD');}
+  else if(type==='q1'){from=today.startOf('year').format('YYYY-MM-DD');to=today.startOf('year').add(2,'month').endOf('month').format('YYYY-MM-DD');}
+  else if(type==='q2'){from=today.startOf('year').add(3,'month').format('YYYY-MM-DD');to=today.startOf('year').add(5,'month').endOf('month').format('YYYY-MM-DD');}
+  else if(type==='ytd'){from=today.startOf('year').format('YYYY-MM-DD');to=today.format('YYYY-MM-DD');}
+  else if(type==='unpaid'){payment='Unpaid';}
+  else if(type==='pending'){status='Pending';}
+  document.getElementById('filterDateFrom').value=from;
+  document.getElementById('filterDateTo').value=to;
+  document.getElementById('filterStatus').value=status;
+  document.getElementById('filterPayment').value=payment;
+  currentPage=1;renderOverstayTable();
+}
+
+// ==================== FILTERS ====================
+function getFilteredAndSorted(){
+  const rigV=document.getElementById('filterRig').value,desigV=document.getElementById('filterDesignation').value;
+  const statV=document.getElementById('filterStatus').value,payV=document.getElementById('filterPayment').value;
+  const from=document.getElementById('filterDateFrom').value,to=document.getElementById('filterDateTo').value;
+  const srch=(document.getElementById('searchName').value||'').toLowerCase().trim();
+  const sev=document.getElementById('filterSeverity').value;
+  let f=overstayRecords.filter(r=>{
+    const d=computeDays(r.startDate,r.endDate);
+    if(rigV!=='all'&&r.rig!==rigV) return false;
+    if(desigV!=='all'&&r.designation!==desigV) return false;
+    if(statV!=='all'&&r.status!==statV) return false;
+    if(payV!=='all'&&r.paymentStatus!==payV) return false;
+    if(from&&r.endDate<from) return false;
+    if(to&&r.startDate>to) return false;
+    if(srch&&!r.name.toLowerCase().includes(srch)&&!r.empId.toLowerCase().includes(srch)) return false;
+    if(sev==='severe'&&d<=30) return false;
+    if(sev==='warning'&&(d<=15||d>30)) return false;
+    if(sev==='normal'&&d>=15) return false;
+    return true;
+  });
+  f.sort((a,b)=>{let av=a[currentSort.field],bv=b[currentSort.field];if(currentSort.field==='days'){av=computeDays(a.startDate,a.endDate);bv=computeDays(b.startDate,b.endDate);}if(av<bv) return currentSort.direction==='asc'?-1:1;if(av>bv) return currentSort.direction==='asc'?1:-1;return 0;});
+  return f;
+}
+
+// ==================== TABLE RENDER ====================
+function renderOverstayTable(){
+  currentFiltered=getFilteredAndSorted();
+  const dupIndexSet=getDuplicateIndexSet(overstayRecords);
+  document.getElementById('recordCountBadge').innerHTML=`<strong>${currentFiltered.length}</strong> / ${overstayRecords.length} records`;
+  const totalPages=pageSize>=9999?1:Math.max(1,Math.ceil(currentFiltered.length/pageSize));
+  if(currentPage>totalPages) currentPage=totalPages;
+  const start=pageSize>=9999?0:(currentPage-1)*pageSize;
+  const end=pageSize>=9999?currentFiltered.length:Math.min(start+pageSize,currentFiltered.length);
+  const pageRecs=currentFiltered.slice(start,end);
+  document.getElementById('paginationInfo').textContent=currentFiltered.length===0?'':`Showing ${start+1}–${end} of ${currentFiltered.length}`;
+  renderPagination(totalPages);
+  const tbody=document.getElementById('overstayTableBody');tbody.innerHTML='';
+  if(!currentFiltered.length){document.getElementById('noRecordsMsg').classList.remove('hidden');updateKPIs();updateTableFooter();return;}
+  document.getElementById('noRecordsMsg').classList.add('hidden');
+  pageRecs.forEach(rec=>{
+    const gi=overstayRecords.indexOf(rec);
+    const row=tbody.insertRow();
+    const days=computeDays(rec.startDate,rec.endDate);
+    const cost=days*calcDailyRate(rec);
+    const isDup=dupIndexSet.has(gi);
+    if(isDup) row.classList.add('dup-row');
+    else if(days>30) row.classList.add('severe-row');
+    else if(days>15) row.classList.add('warning-row');
+    const sClass=rec.status==='Pending'?'status-pending':rec.status==='Approved'?'status-approved':'status-rejected';
+    const pClass=rec.paymentStatus==='Paid'?'payment-paid':rec.paymentStatus==='Partial'?'payment-partial':'payment-unpaid';
+    row.innerHTML=`<td class="px-3 py-2.5"><input type="checkbox" class="w-4 h-4 accent-blue-600" data-index="${gi}"></td><td class="px-3 py-2.5"><span class="badge-rig">${rec.rig}</span></td><td class="px-3 py-2.5 font-mono text-zinc-500 text-xs">${rec.empId}</td><td class="px-3 py-2.5 font-semibold max-w-[150px]"><button class="text-left text-blue-700 dark:text-blue-400 hover:underline truncate block max-w-full" onclick="viewRecord(${gi})">${rec.name}</button>${isDup?'<span class="dup-badge">DUP</span>':''}</td><td class="px-3 py-2.5 text-zinc-600 dark:text-zinc-400 text-xs max-w-[100px] truncate">${rec.designation}</td><td class="px-3 py-2.5 font-mono text-zinc-400 text-xs">${rec.civilId||'—'}</td><td class="px-3 py-2.5 text-xs whitespace-nowrap">${rec.startDate} → ${rec.endDate}</td><td class="px-3 py-2.5 text-center font-bold ${days>30?'text-red-600':days>15?'text-amber-500':'text-blue-600'}">${days}</td><td class="px-3 py-2.5 text-right text-xs font-medium text-zinc-500">${rec.salary?settings.currency+Number(rec.salary).toLocaleString():'—'}</td><td class="px-3 py-2.5 text-right text-xs font-semibold ${rec.paymentStatus==='Paid'?'text-green-600':'text-orange-500'}">${rec.amount?settings.currency+Number(rec.amount).toLocaleString():formatCost(cost)}</td><td class="px-3 py-2.5 text-xs text-zinc-600 dark:text-zinc-400 max-w-[100px] truncate">${rec.reason||'—'}</td><td class="px-3 py-2.5"><span class="status-badge ${sClass}">${rec.status||'Pending'}</span></td><td class="px-3 py-2.5"><span class="payment-badge ${pClass}">${rec.paymentStatus||'Unpaid'}</span></td><td class="px-3 py-2.5 text-xs text-zinc-500">${rec.reliever||'—'}</td><td class="px-3 py-2.5 text-center no-print space-x-1"><button onclick="viewRecord(${gi})" class="text-zinc-400 hover:text-zinc-600"><i class="fas fa-eye text-xs"></i></button><button onclick="editRecord(${gi})" class="text-blue-600 hover:text-blue-700"><i class="fas fa-edit text-xs"></i></button><button onclick="markAsPaid(${gi})" class="${rec.paymentStatus==='Paid'?'text-gray-300 cursor-default':'text-green-600 hover:text-green-700'}"><i class="fas fa-check-circle text-xs"></i></button><button onclick="deleteRecord(${gi})" class="text-red-600 hover:text-red-700"><i class="fas fa-trash text-xs"></i></button></td>`;
+  });
+  document.querySelectorAll('#overstayTableBody input[type="checkbox"]').forEach(cb=>{cb.addEventListener('change',()=>{const i=parseInt(cb.dataset.index);cb.checked?selectedRows.add(i):selectedRows.delete(i);});});
+  updateKPIs();updateTableFooter();
+}
+
+function updateTableFooter(){
+  const totalCost=currentFiltered.reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0);
+  const totalDays=currentFiltered.reduce((s,r)=>s+computeDays(r.startDate,r.endDate),0);
+  const paidCost=currentFiltered.filter(r=>r.paymentStatus==='Paid').reduce((s,r)=>s+(r.amount?parseFloat(r.amount):computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+  const unpaidCost=currentFiltered.filter(r=>r.paymentStatus!=='Paid').reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0);
+  document.getElementById('footerCount').textContent=currentFiltered.length;
+  document.getElementById('footerDays').textContent=totalDays;
+  document.getElementById('footerCost').textContent=formatCost(totalCost);
+  document.getElementById('footerPaid').textContent=formatCost(paidCost);
+  document.getElementById('footerUnpaid').textContent=formatCost(unpaidCost);
+}
+
+function renderPagination(totalPages){
+  const ctrl=document.getElementById('paginationControls');ctrl.innerHTML='';
+  if(totalPages<=1) return;
+  const add=(label,page,disabled=false)=>{const btn=document.createElement('button');btn.className=`page-btn ${page===currentPage?'active':''} ${disabled?'opacity-40 cursor-not-allowed':''}`;btn.textContent=label;if(!disabled) btn.onclick=()=>{currentPage=page;renderOverstayTable();};ctrl.appendChild(btn);};
+  add('‹',currentPage-1,currentPage===1);
+  for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||(i>=currentPage-2&&i<=currentPage+2)) add(i,i);else if(i===currentPage-3||i===currentPage+3){const s=document.createElement('span');s.className='page-btn opacity-40';s.textContent='…';ctrl.appendChild(s);}}
+  add('›',currentPage+1,currentPage===totalPages);
+}
+
+// ==================== KPIs ====================
+function updateKPIs(){
+  const total=overstayRecords.length;
+  const totalDays=overstayRecords.reduce((s,r)=>s+computeDays(r.startDate,r.endDate),0);
+  const pending=overstayRecords.filter(r=>r.status==='Pending').length;
+  const avg=total?(totalDays/total).toFixed(1):0;
+  const unpaid=overstayRecords.filter(r=>r.paymentStatus!=='Paid');
+  const unpaidCost=unpaid.reduce((s,r)=>s+(computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+  const paidRecs=overstayRecords.filter(r=>r.paymentStatus==='Paid');
+  const totalPaid=paidRecs.reduce((s,r)=>s+(r.amount?parseFloat(r.amount):computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+  const totalCost=overstayRecords.reduce((s,r)=>s+(computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+  const recoveryRate=totalCost>0?Math.round((totalPaid/totalCost)*100):0;
+  document.getElementById('kpiTotal').textContent=total;
+  document.getElementById('kpiDays').textContent=totalDays;
+  document.getElementById('kpiPending').textContent=pending;
+  document.getElementById('kpiAvg').innerHTML=`${avg} <span class="text-sm font-normal text-zinc-400">days</span>`;
+  document.getElementById('kpiUnpaidCount').textContent=unpaid.length;
+  document.getElementById('kpiUnpaidCost').textContent=formatCost(unpaidCost);
+  document.getElementById('kpiTotalPaid').textContent=formatCost(totalPaid);
+  document.getElementById('kpiRecovery').textContent=`${recoveryRate}%`;
+  document.getElementById('kpiRecoveryBar').style.width=`${recoveryRate}%`;
+  checkAndNotifyDuplicates();
+  renderNotifications();
+}
+
+// ==================== ANALYTICS ====================
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function renderCharts(){
+  const isDark=document.documentElement.classList.contains('dark');
+  const tc=isDark?'#a1a1aa':'#52525b',gc=isDark?'#3f3f46':'#e4e4e7';
+  const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tc,font:{family:'DM Sans',size:11}}}}};
+
+  // Update summary stats
+  const totalCost=overstayRecords.reduce((s,r)=>s+(computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+  const paidRecs=overstayRecords.filter(r=>r.paymentStatus==='Paid');
+  const totalPaid=paidRecs.reduce((s,r)=>s+(r.amount?parseFloat(r.amount):computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+  const recoveryRate=totalCost>0?Math.round((totalPaid/totalCost)*100):0;
+  const rigs=[...new Set(overstayRecords.map(r=>r.rig))];
+  document.getElementById('anTotal').textContent=overstayRecords.length;
+  document.getElementById('anCost').textContent=formatCost(totalCost);
+  document.getElementById('anRecovery').textContent=`${recoveryRate}%`;
+  document.getElementById('anRigs').textContent=rigs.length;
+
+  // Overstays by Rig
+  destroyChart('rig');
+  const rd={};overstayRecords.forEach(r=>{rd[r.rig]=(rd[r.rig]||0)+1;});
+  const rl=Object.keys(rd).sort();
+  charts.rig=new Chart(document.getElementById('chartRig'),{type:'bar',data:{labels:rl,datasets:[{label:'Overstays',data:rl.map(r=>rd[r]),backgroundColor:['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#f43f5e','#84cc16','#a78bfa','#34d399'],borderRadius:8}]},options:{...base,scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc},beginAtZero:true}}}});
+
+  // Payment Donut
+  destroyChart('payment');
+  const paid=overstayRecords.filter(r=>r.paymentStatus==='Paid').length;
+  const unpaidN=overstayRecords.filter(r=>r.paymentStatus==='Unpaid').length;
+  const partial=overstayRecords.filter(r=>r.paymentStatus==='Partial').length;
+  charts.payment=new Chart(document.getElementById('chartPayment'),{type:'doughnut',data:{labels:['Paid','Unpaid','Partial'],datasets:[{data:[paid,unpaidN,partial],backgroundColor:['#16a34a','#dc2626','#d97706'],borderWidth:0}]},options:{...base,cutout:'65%',plugins:{...base.plugins,legend:{position:'bottom',labels:{color:tc}}}}});
+
+  // Reasons
+  destroyChart('reasons');
+  const rsn={};overstayRecords.forEach(r=>{const k=(r.reason||'Unknown').toUpperCase().trim();rsn[k]=(rsn[k]||0)+1;});
+  const sortedR=Object.entries(rsn).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  charts.reasons=new Chart(document.getElementById('chartReasons'),{type:'bar',data:{labels:sortedR.map(r=>r[0]),datasets:[{label:'Count',data:sortedR.map(r=>r[1]),backgroundColor:'#6366f1',borderRadius:6}]},options:{...base,indexAxis:'y',scales:{x:{ticks:{color:tc},grid:{color:gc},beginAtZero:true},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}}}});
+
+  // Monthly Days
+  destroyChart('monthly');
+  const mo={};overstayRecords.forEach(r=>{const m=r.startDate?r.startDate.substring(0,7):'?';mo[m]=(mo[m]||0)+computeDays(r.startDate,r.endDate);});
+  const ms=Object.keys(mo).sort();
+  charts.monthly=new Chart(document.getElementById('chartMonthly'),{type:'line',data:{labels:ms,datasets:[{label:'Days Lost',data:ms.map(m=>mo[m]),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointRadius:5,pointBackgroundColor:'#2563eb'}]},options:{...base,scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc},grid:{color:gc},beginAtZero:true}}}});
+
+  // NEW: Cost by Rig (stacked: paid vs unpaid)
+  destroyChart('costByRig');
+  const rigList=Object.keys(rd).sort();
+  const rigPaidCost=rigList.map(rg=>overstayRecords.filter(r=>r.rig===rg&&r.paymentStatus==='Paid').reduce((s,r)=>s+(r.amount?parseFloat(r.amount):computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0));
+  const rigUnpaidCost=rigList.map(rg=>overstayRecords.filter(r=>r.rig===rg&&r.paymentStatus!=='Paid').reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0));
+  charts.costByRig=new Chart(document.getElementById('chartCostByRig'),{type:'bar',data:{labels:rigList,datasets:[{label:'Paid',data:rigPaidCost,backgroundColor:'#16a34a',borderRadius:4},{label:'Unpaid/Partial',data:rigUnpaidCost,backgroundColor:'#dc2626',borderRadius:4}]},options:{...base,scales:{x:{stacked:true,ticks:{color:tc},grid:{color:gc}},y:{stacked:true,ticks:{color:tc,callback:v=>`${settings.currency}${v.toLocaleString()}`},grid:{color:gc},beginAtZero:true}},plugins:{...base.plugins,tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${settings.currency}${ctx.raw.toLocaleString(undefined,{maximumFractionDigits:0})}`}}}}});
+
+  // NEW: Monthly Cost Trend (Paid vs Unpaid)
+  destroyChart('costTrend');
+  const moPaid={},moUnpaid={};
+  overstayRecords.forEach(r=>{const m=r.startDate?r.startDate.substring(0,7):'?';const cost=computeDays(r.startDate,r.endDate)*calcDailyRate(r);if(r.paymentStatus==='Paid'){moPaid[m]=(moPaid[m]||0)+(r.amount?parseFloat(r.amount):cost);}else{moUnpaid[m]=(moUnpaid[m]||0)+cost;}});
+  const allMonths=[...new Set([...Object.keys(moPaid),...Object.keys(moUnpaid)])].sort();
+  charts.costTrend=new Chart(document.getElementById('chartCostTrend'),{type:'line',data:{labels:allMonths,datasets:[{label:'Paid',data:allMonths.map(m=>moPaid[m]||0),borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.4},{label:'Unpaid',data:allMonths.map(m=>moUnpaid[m]||0),borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.1)',fill:true,tension:.4}]},options:{...base,scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc,callback:v=>`${settings.currency}${v.toLocaleString(undefined,{maximumFractionDigits:0})}`},grid:{color:gc},beginAtZero:true}}}});
+
+  // Approval by Rig
+  destroyChart('approval');
+  charts.approval=new Chart(document.getElementById('chartApproval'),{type:'bar',data:{labels:rigList,datasets:[{label:'Approved',data:rigList.map(rg=>overstayRecords.filter(r=>r.rig===rg&&r.status==='Approved').length),backgroundColor:'#16a34a',borderRadius:4},{label:'Pending',data:rigList.map(rg=>overstayRecords.filter(r=>r.rig===rg&&r.status==='Pending').length),backgroundColor:'#d97706',borderRadius:4},{label:'Rejected',data:rigList.map(rg=>overstayRecords.filter(r=>r.rig===rg&&r.status==='Rejected').length),backgroundColor:'#dc2626',borderRadius:4}]},options:{...base,scales:{x:{stacked:true,ticks:{color:tc},grid:{color:gc}},y:{stacked:true,ticks:{color:tc},grid:{color:gc},beginAtZero:true}}}});
+
+  // NEW: Payment Aging Buckets (unpaid records)
+  destroyChart('aging');
+  const today2=dayjs();
+  const agingBuckets={'<30 days':0,'30–60 days':0,'60–90 days':0,'>90 days':0};
+  overstayRecords.filter(r=>r.paymentStatus!=='Paid').forEach(r=>{const age=today2.diff(dayjs(r.endDate),'day');if(age<30) agingBuckets['<30 days']++;else if(age<60) agingBuckets['30–60 days']++;else if(age<90) agingBuckets['60–90 days']++;else agingBuckets['>90 days']++;});
+  charts.aging=new Chart(document.getElementById('chartAging'),{type:'doughnut',data:{labels:Object.keys(agingBuckets),datasets:[{data:Object.values(agingBuckets),backgroundColor:['#22c55e','#f59e0b','#f97316','#ef4444'],borderWidth:0}]},options:{...base,cutout:'60%',plugins:{...base.plugins,legend:{position:'bottom',labels:{color:tc}}}}});
+
+  // NEW: Designation breakdown
+  destroyChart('designation');
+  const desgData={};overstayRecords.forEach(r=>{const k=(r.designation||'Unknown').toUpperCase().trim();desgData[k]=(desgData[k]||0)+1;});
+  const sortedD=Object.entries(desgData).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  charts.designation=new Chart(document.getElementById('chartDesignation'),{type:'bar',data:{labels:sortedD.map(d=>d[0]),datasets:[{label:'Overstays',data:sortedD.map(d=>d[1]),backgroundColor:'#8b5cf6',borderRadius:6}]},options:{...base,indexAxis:'y',scales:{x:{ticks:{color:tc},grid:{color:gc},beginAtZero:true},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}}}});
+
+  // NEW: Top employees table
+  const empData={};
+  overstayRecords.forEach(r=>{
+    const k=r.empId;
+    if(!empData[k]) empData[k]={name:r.name,empId:r.empId,rig:r.rig,records:0,days:0,cost:0,paid:0};
+    empData[k].records++;
+    const d=computeDays(r.startDate,r.endDate);
+    empData[k].days+=d;
+    empData[k].cost+=d*calcDailyRate(r);
+    if(r.paymentStatus==='Paid') empData[k].paid++;
+  });
+  const topEmps=Object.values(empData).sort((a,b)=>b.days-a.days).slice(0,10);
+  const tbody=document.getElementById('topEmployeesBody');
+  tbody.innerHTML=topEmps.map((e,i)=>{
+    const payRate=e.records?Math.round((e.paid/e.records)*100):0;
+    const pr=payRate===100?'payment-paid':payRate>0?'payment-partial':'payment-unpaid';
+    return `<tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800">
+      <td class="py-2.5 px-3 font-bold text-zinc-400">${i+1}</td>
+      <td class="py-2.5 px-3 font-semibold">${e.name} <span class="font-mono text-zinc-400">(${e.empId})</span></td>
+      <td class="py-2.5 px-3"><span class="badge-rig">${e.rig}</span></td>
+      <td class="py-2.5 px-3 text-center font-bold">${e.records}</td>
+      <td class="py-2.5 px-3 text-center font-bold text-blue-600">${e.days}</td>
+      <td class="py-2.5 px-3 text-right font-semibold text-orange-500">${formatCost(e.cost)}</td>
+      <td class="py-2.5 px-3"><span class="payment-badge ${pr}">${payRate}% paid</span></td>
+    </tr>`;
+  }).join('');
+
+  // AI panel quick stats
+  renderAiQuickStats();
+}
+
+function renderAiQuickStats(){
+  // Highest risk employees
+  const empRisk={};
+  overstayRecords.filter(r=>r.paymentStatus!=='Paid').forEach(r=>{
+    if(!empRisk[r.empId]) empRisk[r.empId]={name:r.name,empId:r.empId,cost:0};
+    empRisk[r.empId].cost+=computeDays(r.startDate,r.endDate)*calcDailyRate(r);
+  });
+  const topRisk=Object.values(empRisk).sort((a,b)=>b.cost-a.cost).slice(0,5);
+  document.getElementById('aiHighRisk').innerHTML=topRisk.length?topRisk.map((e,i)=>`<div class="flex justify-between items-center py-1 border-b dark:border-zinc-700 last:border-0"><span class="font-semibold text-zinc-700 dark:text-zinc-300">${i+1}. ${e.name}</span><span class="font-bold text-red-600">${formatCost(e.cost)}</span></div>`).join(''):'<span class="text-green-600">No unpaid records 🎉</span>';
+
+  // Oldest unpaid
+  const unpaidSorted=overstayRecords.filter(r=>r.paymentStatus!=='Paid'&&r.endDate).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
+  const today3=dayjs();
+  document.getElementById('aiOldestUnpaid').innerHTML=unpaidSorted.length?unpaidSorted.map(r=>{const age=today3.diff(dayjs(r.endDate),'day');const cls=age>90?'age-old':age>30?'age-medium':'age-fresh';return `<div class="flex justify-between items-center py-1 border-b dark:border-zinc-700 last:border-0"><span class="font-semibold text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]">${r.name}</span><span class="font-bold ${cls}">${age}d old</span></div>`;}).join(''):'<span class="text-green-600">All paid up! 🎉</span>';
+
+  // Cost trend
+  const mo2={};overstayRecords.forEach(r=>{const m=r.startDate?r.startDate.substring(0,7):'?';mo2[m]=(mo2[m]||0)+computeDays(r.startDate,r.endDate)*calcDailyRate(r);});
+  const months=Object.keys(mo2).sort().slice(-6);
+  document.getElementById('aiCostTrend').innerHTML=months.length?months.map(m=>{const v=mo2[m];const maxV=Math.max(...months.map(x=>mo2[x]));const pct=Math.round((v/maxV)*100);return `<div class="flex items-center gap-2 py-0.5"><span class="w-14 shrink-0 text-zinc-400">${m.substring(5)}</span><div class="flex-1 progress-track"><div class="progress-fill bg-blue-500" style="width:${pct}%"></div></div><span class="font-bold text-xs text-blue-600 w-16 text-right">${formatCost(v)}</span></div>`;}).join(''):'No data';
+}
+
+// ==================== RIG SUMMARY ====================
+function renderRigSummary(){
+  const rigs=[...new Set(overstayRecords.map(r=>r.rig))].sort();
+  const grid=document.getElementById('rigSummaryGrid');grid.innerHTML='';
+  document.getElementById('rsTotal').textContent=rigs.length;
+  let highestCostRig='—',highestCost=0,bestRecoveryRig='—',bestRecovery=-1,mostOverstayRig='—',mostCount=0;
+  rigs.forEach(rig=>{
+    const recs=overstayRecords.filter(r=>r.rig===rig);
+    const td=recs.reduce((s,r)=>s+computeDays(r.startDate,r.endDate),0);
+    const totalCost=recs.reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0);
+    const paidCost=recs.filter(r=>r.paymentStatus==='Paid').reduce((s,r)=>s+(r.amount?parseFloat(r.amount):computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+    const uc=recs.filter(r=>r.paymentStatus!=='Paid').reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0);
+    const pending=recs.filter(r=>r.status==='Pending').length;
+    const approved=recs.filter(r=>r.status==='Approved').length;
+    const paid=recs.filter(r=>r.paymentStatus==='Paid').length;
+    const unpaid=recs.filter(r=>r.paymentStatus==='Unpaid').length;
+    const partial=recs.filter(r=>r.paymentStatus==='Partial').length;
+    const paymentRate=recs.length?Math.round((paid/recs.length)*100):0;
+    const recovery=totalCost>0?Math.round((paidCost/totalCost)*100):0;
+    if(totalCost>highestCost){highestCost=totalCost;highestCostRig=rig;}
+    if(recovery>bestRecovery&&recs.length>0){bestRecovery=recovery;bestRecoveryRig=`${rig} (${recovery}%)`;}
+    if(recs.length>mostCount){mostCount=recs.length;mostOverstayRig=rig;}
+    const recColor=recovery>=80?'text-green-600':recovery>=50?'text-amber-500':'text-red-500';
+    const progressColor=recovery>=80?'bg-green-500':recovery>=50?'bg-amber-500':'bg-red-500';
+    grid.innerHTML+=`
+      <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow p-5 border-t-4 border-blue-600">
+        <div class="flex justify-between items-start mb-4">
+          <h3 class="text-xl font-display font-bold text-blue-600">${rig}</h3>
+          <span class="badge-rig">${recs.length} records</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+          <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase tracking-wide mb-1">Total Days</p><p class="font-bold text-lg">${td}</p></div>
+          <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase tracking-wide mb-1">Total Exposure</p><p class="font-bold text-lg text-orange-500">${formatCost(totalCost)}</p></div>
+          <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase tracking-wide mb-1">Unpaid Cost</p><p class="font-bold text-red-500">${formatCost(uc)}</p></div>
+          <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase tracking-wide mb-1">Paid Cost</p><p class="font-bold text-green-600">${formatCost(paidCost)}</p></div>
+          <div class="bg-green-50 dark:bg-green-950 rounded-xl p-3"><p class="text-zinc-400 uppercase mb-1">Approved</p><p class="font-bold text-green-600">${approved}</p></div>
+          <div class="bg-yellow-50 dark:bg-yellow-950 rounded-xl p-3"><p class="text-zinc-400 uppercase mb-1">Pending</p><p class="font-bold text-yellow-500">${pending}</p></div>
+        </div>
+        <div class="mt-3">
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-zinc-400">Payment Recovery</span>
+            <span class="font-bold ${recColor}">${recovery}%</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill ${progressColor}" style="width:${recovery}%"></div></div>
+        </div>
+        <p class="text-xs text-zinc-400 mt-3">Avg: <strong>${recs.length?(td/recs.length).toFixed(1):0}</strong> days/record | Paid: ${paid} Unpaid: ${unpaid} Partial: ${partial}</p>
+      </div>`;
+  });
+  document.getElementById('rsHighest').textContent=`${highestCostRig} (${formatCost(highestCost)})`;
+  document.getElementById('rsBest').textContent=bestRecoveryRig;
+  document.getElementById('rsMost').textContent=`${mostOverstayRig} (${mostCount})`;
+}
+
+// ==================== VIEW RECORD ====================
+window.viewRecord=(idx)=>{
+  const rec=overstayRecords[idx];
+  const days=computeDays(rec.startDate,rec.endDate);
+  const dailyRate=calcDailyRate(rec);
+  const computedAmt=dailyRate*days;
+  const actualAmt=rec.amount?Number(rec.amount):computedAmt;
+  const basic=rec.salary?parseFloat(rec.salary):0;
+  const rateFormula=basic>0?`(${basic} × 12) ÷ 365 = ${dailyRate.toFixed(4)}/day`:`Global default = ${dailyRate.toFixed(4)}/day`;
+  const sClass=rec.status==='Pending'?'status-pending':rec.status==='Approved'?'status-approved':'status-rejected';
+  const pClass=rec.paymentStatus==='Paid'?'payment-paid':rec.paymentStatus==='Partial'?'payment-partial':'payment-unpaid';
+  document.getElementById('viewModalContent').innerHTML=`
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase">Rig</p><p class="font-bold text-base">${rec.rig}</p></div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase">Employee #</p><p class="font-bold">${rec.empId}</p></div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 col-span-2"><p class="text-zinc-400 uppercase">Name</p><p class="font-bold text-lg">${rec.name}</p></div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase">Designation</p><p class="font-semibold">${rec.designation}</p></div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase">Rotation</p><p class="font-semibold">${rec.rotation||'—'}</p></div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 col-span-2"><p class="text-zinc-400 uppercase">Period</p><p class="font-semibold">${rec.startDate} → ${rec.endDate} <strong class="text-blue-600 ml-2">(${days} days)</strong></p></div>
+      <div class="bg-blue-50 dark:bg-blue-950 rounded-xl p-3 col-span-2">
+        <p class="text-zinc-400 uppercase mb-1">Cost Calculation</p>
+        <p class="text-xs">${rateFormula}</p>
+        <p class="font-bold text-lg text-green-700 dark:text-green-400 mt-1">${formatCost(actualAmt)} <span class="text-xs font-normal text-zinc-400">${rec.amount?'(actual paid)':'(computed)'}</span></p>
+      </div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase">Approval</p><span class="status-badge ${sClass}">${rec.status}</span></div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3"><p class="text-zinc-400 uppercase">Payment</p><span class="payment-badge ${pClass}">${rec.paymentStatus}</span></div>
+      <div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 col-span-2"><p class="text-zinc-400 uppercase">Reason</p><p class="font-semibold">${rec.reason||'—'}</p></div>
+      ${rec.reliever?`<div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 col-span-2"><p class="text-zinc-400 uppercase">Reliever</p><p class="font-semibold">${rec.reliever}</p></div>`:''}
+      ${rec.remarks?`<div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 col-span-2"><p class="text-zinc-400 uppercase">Remarks</p><p>${rec.remarks}</p></div>`:''}
+      ${rec.modeOfPayment?`<div class="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3 col-span-2"><p class="text-zinc-400 uppercase">Mode of Payment</p><p class="font-semibold">${rec.modeOfPayment}</p></div>`:''}
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="editRecord(${idx});document.getElementById('viewModal').classList.add('hidden');document.getElementById('viewModal').classList.remove('flex')" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold">Edit</button>
+      <button onclick="markAsPaid(${idx})" class="flex-1 py-2 ${rec.paymentStatus==='Paid'?'bg-zinc-300 cursor-default':'bg-green-600 hover:bg-green-700'} text-white rounded-xl text-xs font-semibold">${rec.paymentStatus==='Paid'?'Already Paid':'Mark Paid'}</button>
+    </div>`;
+  document.getElementById('viewModal').classList.remove('hidden');document.getElementById('viewModal').classList.add('flex');
+};
+
+// ==================== OVERSTAY PREVIEW ====================
+function updatePreview(){
+  const s=document.getElementById('modalStart').value,e=document.getElementById('modalEnd').value;
+  let dailyRate=0;
+  const basicInput=parseFloat(document.getElementById('modalSalary').value);
+  if(basicInput>0){dailyRate=(basicInput*12)/365;}else{const empId=document.getElementById('modalEmpId').value.trim();const emp=empId?employeeMaster.find(emp=>emp.empId===empId):null;const basic=emp?parseFloat(emp.basicSalary):0;if(basic>0){dailyRate=(basic*12)/365;}else{dailyRate=settings.dailyRate;}}
+  document.getElementById('modalDailyRate').value=dailyRate>0?dailyRate.toFixed(4):'';
+  if(s&&e){const days=computeDays(s,e);const amount=dailyRate*days;document.getElementById('previewDays').textContent=days;document.getElementById('previewRate').textContent=settings.currency+dailyRate.toFixed(4)+'/day';document.getElementById('previewCost').textContent=settings.currency+amount.toFixed(3);document.getElementById('modalCalcAmount').value=settings.currency+amount.toFixed(3)+` (${days}d × ${dailyRate.toFixed(4)})`;document.getElementById('modalDaysPreview').classList.remove('hidden');}
+}
+['modalStart','modalEnd','modalSalary'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{updatePreview();if(id!=='modalSalary')checkFormDuplicates();}));
+
+// ==================== SAVE OVERSTAY ====================
+document.getElementById('overstayForm').addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const rec={rig:document.getElementById('modalRig').value.trim(),empId:document.getElementById('modalEmpId').value.trim(),name:document.getElementById('modalName').value.trim(),designation:document.getElementById('modalDesignation').value.trim(),rotation:document.getElementById('modalRotation').value.trim()||'28/28',civilId:document.getElementById('modalCivilId').value.trim(),salary:document.getElementById('modalSalary').value.trim(),modeOfPayment:document.getElementById('modalModeOfPayment').value,startDate:document.getElementById('modalStart').value,endDate:document.getElementById('modalEnd').value,reason:document.getElementById('modalReason').value.trim(),reliever:document.getElementById('modalReliever').value.trim(),status:document.getElementById('modalStatus').value,paymentStatus:document.getElementById('modalPayment').value,remarks:document.getElementById('modalRemarks').value.trim()};
+  if(!rec.startDate||!rec.endDate){showToast("Dates required","error");return;}
+  const days=computeDays(rec.startDate,rec.endDate);
+  const dailyRate=calcDailyRate(rec);
+  const computedAmount=parseFloat((dailyRate*days).toFixed(3));
+  const manualAmount=parseFloat(document.getElementById('modalAmount').value);
+  rec.amount=(!isNaN(manualAmount)&&manualAmount>0)?String(manualAmount):String(computedAmount);
+  const idx=parseInt(document.getElementById('editIndex').value);
+  const existingIdx=idx>=0?idx:-1;
+  const potentialDups=overstayRecords.filter((r,i)=>{if(i===existingIdx) return false;return r.empId===rec.empId&&periodsOverlap(rec,r);});
+  if(potentialDups.length>0){const periods=potentialDups.map(r=>`${r.startDate} → ${r.endDate}`).join(', ');if(!confirm(`⚠️ DUPLICATE WARNING\n\nEmployee ${rec.empId} (${rec.name}) has overlapping overstay:\n${periods}\n\nSave anyway?`)) return;}
+  if(idx>=0){overstayRecords[idx]=rec;logAudit('EDIT',rec);showToast("Record updated");}else{overstayRecords.push(rec);logAudit('ADD',rec);showToast("Record added");}
+  saveToLocalStorage();refreshAll();closeModal();
+});
+
+window.editRecord=(idx)=>openModal(overstayRecords[idx],idx);
+window.markAsPaid=(idx)=>{if(overstayRecords[idx].paymentStatus==='Paid') return;if(confirm("Mark as Paid?")){const rec=overstayRecords[idx];rec.paymentStatus='Paid';logAudit('MARK_PAID',rec);saveToLocalStorage();refreshAll();showToast("Marked as Paid");}};
+window.deleteRecord=(idx)=>{if(confirm("Delete this record?")){const rec=overstayRecords[idx];logAudit('DELETE',rec);overstayRecords.splice(idx,1);saveToLocalStorage();refreshAll();showToast("Deleted","error");}};
+
+// Bulk actions
+document.getElementById('bulkApprove').addEventListener('click',()=>{if(!selectedRows.size) return showToast("No records selected","error");if(confirm(`Approve ${selectedRows.size} records?`)){selectedRows.forEach(i=>{overstayRecords[i].status='Approved';});logAudit('BULK_APPROVE',{empId:`${selectedRows.size} records`,name:'Bulk',rig:'',startDate:'',endDate:'',status:'Approved',paymentStatus:''});saveToLocalStorage();refreshAll();selectedRows.clear();showToast("Approved");}});
+document.getElementById('bulkMarkPaid').addEventListener('click',()=>{if(!selectedRows.size) return showToast("No records selected","error");if(confirm(`Mark ${selectedRows.size} as Paid?`)){selectedRows.forEach(i=>{overstayRecords[i].paymentStatus='Paid';});logAudit('BULK_PAID',{empId:`${selectedRows.size} records`,name:'Bulk',rig:'',startDate:'',endDate:'',status:'',paymentStatus:'Paid'});saveToLocalStorage();refreshAll();selectedRows.clear();showToast("Marked Paid");}});
+document.getElementById('bulkDelete').addEventListener('click',()=>{if(!selectedRows.size) return showToast("No records selected","error");if(confirm(`Delete ${selectedRows.size} records?`)){const toLog=Array.from(selectedRows).map(i=>overstayRecords[i]);toLog.forEach(r=>logAudit('DELETE',r));Array.from(selectedRows).sort((a,b)=>b-a).forEach(i=>overstayRecords.splice(i,1));saveToLocalStorage();refreshAll();selectedRows.clear();showToast("Deleted","error");}});
+document.getElementById('selectAll').addEventListener('change',function(){selectedRows.clear();document.querySelectorAll('#overstayTableBody input[type="checkbox"]').forEach(cb=>{cb.checked=this.checked;if(this.checked)selectedRows.add(parseInt(cb.dataset.index));});});
+
+// ==================== GEMINI AI INSIGHTS ====================
+let geminiApiKey = '';
+
+function loadGeminiKey() {
+  geminiApiKey = localStorage.getItem('aeco_gemini_key') || '';
+  updateGeminiStatus();
+}
+function saveGeminiKey(key) {
+  geminiApiKey = key.trim();
+  localStorage.setItem('aeco_gemini_key', geminiApiKey);
+  updateGeminiStatus();
+}
+function updateGeminiStatus() {
+  const dot  = document.getElementById('geminiStatusDot');
+  const text = document.getElementById('geminiStatusText');
+  const banner = document.getElementById('geminiKeyBanner');
+  if (geminiApiKey) {
+    dot.className  = 'w-2 h-2 rounded-full bg-green-500';
+    text.textContent = 'Connected — Gemini 2.0 Flash ready';
+    banner.classList.add('hidden');
+    document.getElementById('geminiKeyInput').value = '●'.repeat(20);
+  } else {
+    dot.className  = 'w-2 h-2 rounded-full bg-zinc-300';
+    text.textContent = 'Add your Gemini API key to get started';
+    banner.classList.remove('hidden');
+  }
+}
+
+document.getElementById('saveGeminiKey').addEventListener('click', () => {
+  const key = document.getElementById('geminiKeyInput').value.trim();
+  if (!key || key.startsWith('●')) { showToast('Paste a valid API key', 'error'); return; }
+  saveGeminiKey(key);
+  showToast('Gemini API key saved ✓');
+});
+
+function buildGeminiPrompt(type) {
+  const total       = overstayRecords.length;
+  const totalDays   = overstayRecords.reduce((s,r)=>s+computeDays(r.startDate,r.endDate),0);
+  const totalCost   = overstayRecords.reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0);
+  const unpaid      = overstayRecords.filter(r=>r.paymentStatus!=='Paid');
+  const unpaidCost  = unpaid.reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0);
+  const paidRecs    = overstayRecords.filter(r=>r.paymentStatus==='Paid');
+  const totalPaid   = paidRecs.reduce((s,r)=>s+(r.amount?parseFloat(r.amount):computeDays(r.startDate,r.endDate)*calcDailyRate(r)),0);
+  const pending     = overstayRecords.filter(r=>r.status==='Pending');
+  const rigs        = [...new Set(overstayRecords.map(r=>r.rig))].sort();
+  const reasons     = {};
+  overstayRecords.forEach(r=>{const k=(r.reason||'Unknown').toUpperCase();reasons[k]=(reasons[k]||0)+1;});
+  const topReasons  = Object.entries(reasons).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([r,c])=>`${r} (${c})`).join(', ');
+  const dupGroups   = findDuplicateGroups(overstayRecords);
+  const avgDays     = total?(totalDays/total).toFixed(1):0;
+  const recovery    = totalCost>0?Math.round((totalPaid/totalCost)*100):0;
+  const mo          = {};
+  overstayRecords.forEach(r=>{const m=r.startDate?r.startDate.substring(0,7):'?';mo[m]=(mo[m]||0)+computeDays(r.startDate,r.endDate);});
+  const monthlyTrend = Object.entries(mo).sort((a,b)=>a[0].localeCompare(b[0])).slice(-6).map(([m,d])=>`${m}: ${d} days`).join(', ');
+
+  // Per-rig breakdown
+  const rigBreakdown = rigs.map(rig=>{
+    const recs=overstayRecords.filter(r=>r.rig===rig);
+    const days=recs.reduce((s,r)=>s+computeDays(r.startDate,r.endDate),0);
+    const cost=recs.reduce((s,r)=>s+computeDays(r.startDate,r.endDate)*calcDailyRate(r),0);
+    const unpaidR=recs.filter(r=>r.paymentStatus!=='Paid').length;
+    return `${rig}: ${recs.length} records, ${days} days, ${settings.currency}${cost.toFixed(0)}, ${unpaidR} unpaid`;
+  }).join('\n');
+
+  const baseData = `
+COMPANY: ${settings.company} | CURRENCY: ${settings.currency}
+TOTAL RECORDS: ${total} | AVG DAYS: ${avgDays} | TOTAL DAYS LOST: ${totalDays}
+FINANCIAL EXPOSURE: ${settings.currency}${totalCost.toFixed(0)} | PAID: ${settings.currency}${totalPaid.toFixed(0)} | UNPAID: ${settings.currency}${unpaidCost.toFixed(0)}
+RECOVERY RATE: ${recovery}% | PENDING APPROVAL: ${pending.length} | DUPLICATES: ${dupGroups.length} groups
+TOP REASONS: ${topReasons}
+MONTHLY TREND (last 6 months): ${monthlyTrend}
+RIGS: ${rigs.join(', ')}
+PER-RIG BREAKDOWN:\n${rigBreakdown}`;
+
+  const focusMap = {
+    full:        `You are a senior HR & operations analyst for an oil & gas company. Analyze ALL aspects of this overstay data comprehensively. Give 6-8 strategic insights covering: financial risk, payment bottlenecks, rig performance, operational patterns, anomalies, and a prioritized action plan. Use clear headings (##) and specific numbers.`,
+    financial:   `You are a finance controller for an oil & gas company. Focus ONLY on the financial aspects: cost exposure, payment recovery rates, unpaid liability aging, cash flow risk, rig-by-rig cost comparison, and financial recommendations. Give 5-6 specific insights with exact numbers.`,
+    operational: `You are an operations manager for an oil & gas company. Focus on operational patterns: why overstays are happening (by reason), which rigs are most affected, reliever shortages, rotation problems, and operational fixes. Give 5-6 actionable recommendations.`,
+    risk:        `You are a risk manager for an oil & gas company. Identify and rank all risks in this data: financial exposure, duplicate payment risk, compliance/approval bottlenecks, employees with repeated overstays, expired document risks, and mitigation strategies. Format as risk level: Critical/High/Medium.`,
+    rig:         `You are a rig operations analyst. Give a detailed per-rig performance breakdown — for each rig analyze its overstay frequency, cost, payment status, common reasons, and a 1-sentence recommendation. Then rank all rigs from worst to best performing.`
+  };
+
+  return `${focusMap[type] || focusMap.full}
+
+DATA:${baseData}
+
+Format your response with markdown headings (##), bold key numbers, and clear sections. Be specific and actionable.`;
+}
+
+function formatGeminiOutput(text) {
+  return text
+    .split('\n')
+    .map(line => {
+      line = line
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code class="bg-zinc-100 dark:bg-zinc-800 px-1 rounded text-xs font-mono">$1</code>');
+      if (line.startsWith('## ')) return `<h3 class="font-display font-bold text-base mt-5 mb-2 text-zinc-800 dark:text-zinc-100 border-b dark:border-zinc-700 pb-1">${line.slice(3)}</h3>`;
+      if (line.startsWith('# '))  return `<h2 class="font-display font-bold text-lg mt-5 mb-2 text-blue-700 dark:text-blue-400">${line.slice(2)}</h2>`;
+      if (line.startsWith('### ')) return `<h4 class="font-bold text-sm mt-3 mb-1 text-zinc-700 dark:text-zinc-300">${line.slice(4)}</h4>`;
+      if (line.match(/^[\*\-] /)) return `<div class="flex gap-2 mb-1"><span class="text-indigo-500 mt-0.5 shrink-0">•</span><span>${line.slice(2)}</span></div>`;
+      if (line.match(/^\d+\. /))  return `<div class="flex gap-2 mb-1.5"><span class="font-bold text-indigo-600 dark:text-indigo-400 shrink-0 w-5">${line.match(/^(\d+)\./)[1]}.</span><span>${line.replace(/^\d+\. /,'')}</span></div>`;
+      if (line.trim() === '') return '<div class="mb-2"></div>';
+      return `<p class="mb-2 leading-relaxed">${line}</p>`;
+    })
+    .join('');
+}
+
+document.getElementById('runAiInsights').addEventListener('click', async () => {
+  if (!geminiApiKey) { showToast('Add your Gemini API key first', 'error'); document.getElementById('geminiKeyInput').focus(); return; }
+  const output  = document.getElementById('aiInsightsOutput');
+  const type    = document.getElementById('analysisType').value;
+  const typeLabels = { full:'Full Analysis', financial:'Financial Focus', operational:'Operational Focus', risk:'Risk Assessment', rig:'Per-Rig Breakdown' };
+
+  output.innerHTML = `
+    <div class="flex flex-col items-center justify-center py-12 text-zinc-400">
+      <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-4 animate-pulse">
+        <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" class="w-6 h-6" onerror="this.parentElement.innerHTML='<i class=\'fas fa-robot text-white\'></i>'">
+      </div>
+      <p class="font-semibold text-sm text-zinc-500">Gemini is analyzing your data…</p>
+      <p class="text-xs mt-1 text-zinc-400">${typeLabels[type]} · ${overstayRecords.length} records</p>
+    </div>`;
+
+  try {
+    const prompt = buildGeminiPrompt(type);
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.4, maxOutputTokens: 2048 }
+        })
+      }
+    );
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
+    output.innerHTML = `<div class="text-sm text-zinc-700 dark:text-zinc-200">${formatGeminiOutput(text)}</div>`;
+    document.getElementById('geminiTokenInfo').classList.remove('hidden');
+    document.getElementById('geminiTimestamp').textContent = 'Generated ' + new Date().toLocaleTimeString();
+    renderAiQuickStats();
+    showToast('Gemini analysis complete ✓');
+  } catch(err) {
+    output.innerHTML = `
+      <div class="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl p-5 text-sm">
+        <p class="font-bold text-red-700 dark:text-red-300 mb-2"><i class="fas fa-exclamation-circle mr-2"></i>Gemini Error</p>
+        <p class="text-red-600 dark:text-red-400">${err.message}</p>
+        <p class="text-xs text-red-400 mt-2">Check that your API key is correct and has Gemini API access enabled at <strong>aistudio.google.com</strong></p>
+      </div>`;
+    showToast('Gemini error: ' + err.message, 'error');
+  }
+});
+
+document.getElementById('clearInsights').addEventListener('click', () => {
+  document.getElementById('aiInsightsOutput').innerHTML = `
+    <div class="flex flex-col items-center justify-center py-16 text-zinc-400">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 flex items-center justify-center mb-4">
+        <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" class="w-8 h-8 opacity-60" onerror="this.parentElement.innerHTML='<i class=\'fas fa-robot text-4xl text-indigo-300\'></i>'">
+      </div>
+      <p class="text-base font-semibold text-zinc-500 mb-1">Ready for Gemini Analysis</p>
+      <p class="text-xs text-center max-w-xs">Select an analysis type and click Analyze with Gemini.</p>
+    </div>`;
+  document.getElementById('geminiTokenInfo').classList.add('hidden');
+});
+
+// ==================== IMPORT/EXPORT ====================
+function parseExcelDate(val){if(!val&&val!==0) return '';if(typeof val==='number'){try{const d=XLSX.SSF.parse_date_code(val);if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;}catch(e){}}if(val instanceof Date) return dayjs(val).format('YYYY-MM-DD');const s=String(val).trim();const datePart=s.split(' ')[0];const parsed=dayjs(datePart);return parsed.isValid()?parsed.format('YYYY-MM-DD'):'';}
+
+document.getElementById('downloadOvTemplateBtn').addEventListener('click',()=>{
+  const wb2=XLSX.utils.book_new();
+  const titleRow=['','Overstay - AEC-253, SD207 TO SD220','','','','','Designation','Rotation','Overstay Start Date','Overstay End Date','Total Overstayed\nDays Per Month','Reason for the Overstay','Reliever Name','Remarks','Salary','Amount','Mode of Payment'];
+  const monthRow=['','','','','',dayjs().format('MMMM- YYYY'),'','','','','','','','','','',''];
+  const headerRow=['','Sr. No','Rig#','Employee#','Name','Civil ID#','Designation','Rotation','Overstay Start Date','Overstay End Date','Total Overstayed\nDays Per Month','Reason for the Overstay','Reliever Name','Remarks','Salary','Amount','Mode of Payment'];
+  const sample1=['','1','SD-205','AECO-741','Krishnaprasad Vasudevan','293011606667','FLOORMAN','56/28','2026-02-01','2026-02-10',10,'Crew shortage','Mehulbhai','Reliever no-show',800,266.67,'Bank'];
+  const sample2=['','2','AEC-254','AECO-1084','SHOWKAT AHMAD BHAT','261030803184','Driller','28/28','2026-02-15','2026-02-28',14,'GP EXPIRED','AMER','',1200,560.00,'Bank'];
+  const ws=XLSX.utils.aoa_to_sheet([titleRow,monthRow,headerRow,sample1,sample2]);
+  ws['!cols']=[5,8,12,14,28,16,26,10,20,20,14,30,20,22,10,12,16].map(w=>({wch:w}));
+  ws['!merges']=[{s:{r:0,c:1},e:{r:0,c:4}},{s:{r:1,c:4},e:{r:1,c:5}}];
+  XLSX.utils.book_append_sheet(wb2,ws,'Overstay_Template');XLSX.writeFile(wb2,'AECO_Overstay_Import_Template.xlsx');showToast('Template downloaded');
+});
+
+document.getElementById('importOverstayBtn').addEventListener('click',()=>{
+  const inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls,.csv';
+  inp.onchange=async ev=>{
+    const f=ev.target.files[0];if(!f) return;
+    try{
+      const data=await f.arrayBuffer();const wb=XLSX.read(data,{type:'array',cellDates:true});const sheet=wb.Sheets[wb.SheetNames[0]];const aoa=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+      let headerRowIdx=-1;for(let i=0;i<Math.min(aoa.length,10);i++){const row=aoa[i].map(c=>String(c).trim());if(row.some(c=>c==='Employee#'||c==='Employee #')){headerRowIdx=i;break;}}
+      let rows;if(headerRowIdx===-1){rows=XLSX.utils.sheet_to_json(sheet,{defval:''});}else{rows=XLSX.utils.sheet_to_json(sheet,{defval:'',range:headerRowIdx});}
+      if(!rows||!rows.length){showToast('File empty or unrecognized','error');return;}
+      let imported=[],skipped=0;
+      rows.forEach(r=>{
+        const empId=String(r['Employee#']||r['Employee #']||'').trim();
+        if(!empId||!empId.toUpperCase().startsWith('AECO')){skipped++;return;}
+        const rig=normalizeRig(String(r['Rig#']||r['Rig']||'').trim());
+        const name=String(r['Name']||r['Name ']||'').trim();
+        const civilId=String(r['Civil ID#']||r['Civil ID']||'').trim();
+        const desig=String(r['Designation']||'').trim();
+        const rotation=String(r['Rotation']||'28/28').trim().replace(/\s+/g,'');
+        const startDate=parseExcelDate(r['Overstay Start Date']||r['Start Date']||r['startDate']||'');
+        const endDate=parseExcelDate(r['Overstay End Date']||r['End Date']||r['endDate']||'');
+        const reason=String(r['Reason for the Overstay']||r['Reason']||'').trim();
+        const reliever=String(r['Reliever Name']||r['Reliever']||'').trim();
+        const remarks=String(r['Remarks']||'').trim();
+        const salary=String(r['Salary']||'').trim();
+        const amount=String(r['Amount']||'').trim();
+        const modeOfPayment=String(r['Mode of Payment']||'').trim();
+        const status=String(r['Approval Status']||'Pending').trim();
+        const payStatus=String(r['Payment Status']||(amount?'Paid':'Unpaid')).trim();
+        if(!rig||!name||!startDate||!endDate){skipped++;return;}
+        const salaryNum=parseFloat(salary);const perDay=salaryNum>0?(salaryNum*12)/365:0;
+        const daysCount=(()=>{try{const s2=new Date(startDate),e2=new Date(endDate);return Math.max(0,Math.round((e2-s2)/86400000)+1);}catch(x){return 0;}})();
+        const computedAmount=(perDay>0&&daysCount>0)?parseFloat((perDay*daysCount).toFixed(3)).toString():'';
+        imported.push({rig,empId,name,civilId,designation:desig,rotation,startDate,endDate,reason,reliever,remarks,salary,amount:amount||computedAmount,modeOfPayment,status,paymentStatus:payStatus});
+      });
+      if(imported.length>0){overstayRecords.push(...imported);logAudit('IMPORT',{empId:`${imported.length} records`,name:'Bulk Import',rig:'',startDate:'',endDate:'',status:'',paymentStatus:''});saveToLocalStorage();refreshAll();showToast(`✓ ${imported.length} records imported${skipped?' ('+skipped+' skipped)':''}`);}
+      else{showToast(`No valid records — ${skipped} rows skipped.`,'error');}
+    }catch(err){showToast('Failed to read file: '+err.message,'error');}
+  };inp.click();
+});
+
+function buildExportRows(recs){return recs.map((r,i)=>({'':'','Sr. No':i+1,'Rig#':r.rig,'Employee#':r.empId,'Name':r.name,'Civil ID#':r.civilId||'','Designation':r.designation,'Rotation':r.rotation,'Overstay Start Date':r.startDate,'Overstay End Date':r.endDate,'Total Overstayed\nDays Per Month':computeDays(r.startDate,r.endDate),'Reason for the Overstay':r.reason,'Reliever Name':r.reliever,'Remarks':r.remarks,'Salary':r.salary||'','Amount':r.amount?parseFloat(r.amount):parseFloat((calcDailyRate(r)*computeDays(r.startDate,r.endDate)).toFixed(3)),'Per Day Rate':parseFloat(calcDailyRate(r).toFixed(4)),'Mode of Payment':r.modeOfPayment||'','Approval Status':r.status,'Payment Status':r.paymentStatus}));}
+const COL_WIDTHS=[5,8,12,14,28,16,26,10,20,20,14,30,20,22,10,12,14,16,14,14].map(w=>({wch:w}));
+document.getElementById('exportAllBtn').addEventListener('click',()=>{const ws=XLSX.utils.json_to_sheet(buildExportRows(overstayRecords));ws['!cols']=COL_WIDTHS;const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws,'Overstays');XLSX.writeFile(wb2,`AECO_All_Overstays_${dayjs().format('YYYY-MM-DD')}.xlsx`);showToast('All data exported');});
+document.getElementById('exportFilteredBtn').addEventListener('click',()=>{if(!currentFiltered.length) return showToast('Nothing to export','error');const ws=XLSX.utils.json_to_sheet(buildExportRows(currentFiltered));ws['!cols']=COL_WIDTHS;const wb2=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb2,ws,'Filtered');XLSX.writeFile(wb2,`AECO_Filtered_${dayjs().format('YYYY-MM-DD')}.xlsx`);showToast(`${currentFiltered.length} records exported`);});
+document.getElementById('printReportBtn').addEventListener('click',()=>window.print());
+document.getElementById('resetDataBtn').addEventListener('click',()=>{if(confirm("Reset overstay data to defaults?")){overstayRecords=JSON.parse(JSON.stringify(defaultOverstay));saveToLocalStorage();refreshAll();showToast("Reset","warn");}});
+
+// ==================== FILTERS ====================
+['filterRig','filterDesignation','filterStatus','filterPayment','filterDateFrom','filterDateTo','searchName','filterSeverity'].forEach(id=>{document.getElementById(id).addEventListener('input',()=>{currentPage=1;renderOverstayTable();document.querySelectorAll('.qf-pill').forEach(p=>p.classList.remove('active'));document.getElementById('qf_all').classList.add('active');});});
+document.getElementById('pageSizeSelect').addEventListener('change',e=>{pageSize=parseInt(e.target.value);currentPage=1;renderOverstayTable();});
+document.getElementById('resetFilters').onclick=()=>{['filterRig','filterDesignation','filterStatus','filterPayment','filterSeverity'].forEach(id=>document.getElementById(id).value='all');['filterDateFrom','filterDateTo','searchName'].forEach(id=>document.getElementById(id).value='');document.querySelectorAll('.qf-pill').forEach(p=>p.classList.remove('active'));document.getElementById('qf_all').classList.add('active');currentPage=1;renderOverstayTable();};
+document.querySelectorAll('.sortable-header').forEach(h=>{h.addEventListener('click',()=>{const f=h.getAttribute('data-sort');if(currentSort.field===f) currentSort.direction=currentSort.direction==='asc'?'desc':'asc';else{currentSort.field=f;currentSort.direction='desc';}currentPage=1;renderOverstayTable();});});
+
+// ==================== MODAL UTILS ====================
+function openModal(rec=null,idx=-1){
+  document.getElementById('editIndex').value=idx;
+  // Reset new panels
+  document.getElementById('lastOSBanner').classList.add('hidden');
+  document.getElementById('formDupWarning').classList.add('hidden');
+  document.getElementById('modalStart').style.borderColor='';
+  document.getElementById('modalEnd').style.borderColor='';
+  _suggestedStartDate='';
+  if(rec){
+    document.getElementById('modalRig').value=rec.rig||'';
+    document.getElementById('modalEmpId').value=rec.empId||'';
+    document.getElementById('modalName').value=rec.name||'';
+    document.getElementById('modalDesignation').value=rec.designation||'';
+    document.getElementById('modalRotation').value=rec.rotation||'28/28';
+    document.getElementById('modalCivilId').value=rec.civilId||'';
+    document.getElementById('modalDailyRate').value=rec.dailyRate||'';
+    document.getElementById('modalSalary').value=rec.salary||'';
+    document.getElementById('modalAmount').value=rec.amount||'';
+    const note=document.getElementById('modalSalaryNote');
+    if(rec.salary){const perDay=(parseFloat(rec.salary)*12/365).toFixed(4);note.textContent=`ℹ️ Basic salary from record: ${settings.currency}${Number(rec.salary).toLocaleString()} → ${settings.currency}${perDay}/day`;note.classList.remove('hidden');}
+    else{const emp=employeeMaster.find(e=>e.empId===rec.empId);if(emp&&emp.basicSalary){const perDay=(parseFloat(emp.basicSalary)*12/365).toFixed(4);note.textContent=`ℹ️ Salary from directory: ${settings.currency}${Number(emp.basicSalary).toLocaleString()} → ${settings.currency}${perDay}/day`;note.classList.remove('hidden');if(!rec.salary) document.getElementById('modalSalary').value=emp.basicSalary;}else{note.textContent=`ℹ️ No salary found — using global default (${settings.currency}${settings.dailyRate}/day)`;note.classList.remove('hidden');}}
+    document.getElementById('modalModeOfPayment').value=rec.modeOfPayment||'';
+    document.getElementById('modalStart').value=rec.startDate||'';
+    document.getElementById('modalEnd').value=rec.endDate||'';
+    document.getElementById('modalReason').value=rec.reason||'';
+    document.getElementById('modalReliever').value=rec.reliever||'';
+    document.getElementById('modalStatus').value=rec.status||'Pending';
+    document.getElementById('modalPayment').value=rec.paymentStatus||'Unpaid';
+    document.getElementById('modalRemarks').value=rec.remarks||'';
+    document.getElementById('modalTitle').textContent='Edit Overstay Record';
+    // Load last OS history for the employee (edit mode)
+    if(rec.empId) loadLastOSForEmployee(rec.empId);
+    // Check for duplicates on open (edit mode)
+    checkFormDuplicates();
+    updatePreview();
+  }else{
+    document.getElementById('overstayForm').reset();
+    document.getElementById('modalStatus').value='Pending';
+    document.getElementById('modalPayment').value='Unpaid';
+    document.getElementById('modalRotation').value='28/28';
+    document.getElementById('modalTitle').textContent='Add Overstay Record';
+    document.getElementById('modalDaysPreview').classList.add('hidden');
+    document.getElementById('modalSalaryNote').classList.add('hidden');
+  }
+  document.getElementById('entryModal').classList.remove('hidden');document.getElementById('entryModal').classList.add('flex');
+}
+function closeModal(){const m=document.getElementById('entryModal');m.classList.add('hidden');m.classList.remove('flex');}
+
+// ==================== SETTINGS ====================
+document.getElementById('settingsBtn').onclick=()=>{
+  document.getElementById('settingsDailyRate').value=settings.dailyRate;
+  document.getElementById('settingsCompany').value=settings.company||'AECO';
+  document.getElementById('settingsCurrency').value=settings.currency||'$';
+  document.getElementById('settingsSheetUrl').value=gsUrl||'';
+  document.getElementById('settingsFirebaseUrl').value=localStorage.getItem('aeco_firebase_url')||'';
+  document.getElementById('sheetStatusMsg').classList.add('hidden');
+  document.getElementById('firebaseStatusMsg').classList.add('hidden');
+  document.getElementById('settingsModal').classList.remove('hidden');
+  document.getElementById('settingsModal').classList.add('flex');
+};
+const closeSet=()=>{document.getElementById('settingsModal').classList.add('hidden');document.getElementById('settingsModal').classList.remove('flex');};
+document.getElementById('closeSettingsBtn').onclick=closeSet;document.getElementById('cancelSettingsBtn').onclick=closeSet;
+document.getElementById('saveSettingsBtn').onclick=()=>{settings.dailyRate=parseFloat(document.getElementById('settingsDailyRate').value)||450;settings.company=document.getElementById('settingsCompany').value||'AECO';settings.currency=document.getElementById('settingsCurrency').value||'$';const newUrl=document.getElementById('settingsSheetUrl').value.trim();gsUrl=newUrl;settings.gsUrl=newUrl;if(newUrl){document.getElementById('syncStatusBtn').classList.remove('hidden');localStorage.setItem('aeco_gs_url',newUrl);}else{document.getElementById('syncStatusBtn').classList.add('hidden');localStorage.removeItem('aeco_gs_url');}saveSettings();closeSet();refreshAll();showToast("Settings saved");};
+
+// Dark mode
+document.getElementById('toggleDarkMode').addEventListener('click',()=>{document.documentElement.classList.toggle('dark');const d=document.documentElement.classList.contains('dark');localStorage.setItem('aecoDarkMode',d);document.getElementById('darkModeText').textContent=d?'Light':'Dark';if(!document.getElementById('statsPanel').classList.contains('hidden')) renderCharts();});
+
+// Backdrop close
+['entryModal','empModal','settingsModal','viewModal'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this){this.classList.add('hidden');this.classList.remove('flex');}});});
+
+document.getElementById('addRecordBtn').onclick=()=>openModal();
+document.getElementById('closeModalBtn').onclick=closeModal;
+document.getElementById('cancelModalBtn').onclick=closeModal;
+document.getElementById('closeViewModalBtn').onclick=()=>{document.getElementById('viewModal').classList.add('hidden');document.getElementById('viewModal').classList.remove('flex');};
+
+// ==================== TABS ====================
+function switchTab(tab){
+  document.querySelectorAll('.panel-content').forEach(p=>p.classList.add('hidden'));
+  document.getElementById(tab+'Panel').classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active-tab'));
+  const tabEl=document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1));
+  if(tabEl) tabEl.classList.add('active-tab');
+  if(tab==='stats') renderCharts();
+  if(tab==='rigSummary') renderRigSummary();
+  if(tab==='duplicates') renderDuplicatesPanel();
+  if(tab==='notifications') renderNotifications();
+  if(tab==='audit') renderAuditLog();
+  if(tab==='insights') renderAiQuickStats();
+}
+document.getElementById('tabDashboard').onclick=()=>switchTab('dashboard');
+document.getElementById('tabOverstay').onclick=()=>switchTab('overstay');
+document.getElementById('tabEmployees').onclick=()=>switchTab('employees');
+document.getElementById('tabStats').onclick=()=>switchTab('stats');
+document.getElementById('tabRigSummary').onclick=()=>switchTab('rigSummary');
+document.getElementById('tabDuplicates').onclick=()=>switchTab('duplicates');
+document.getElementById('tabInsights').onclick=()=>switchTab('insights');
+document.getElementById('tabNotifications').onclick=()=>switchTab('notifications');
+document.getElementById('tabAudit').onclick=()=>switchTab('audit');
+
+// ==================== POPULATE FILTERS ====================
+function populateFilters(){
+  const rigs=[...new Set(overstayRecords.map(r=>r.rig))].sort();
+  const desigs=[...new Set(overstayRecords.map(r=>r.designation))].sort();
+  document.getElementById('filterRig').innerHTML='<option value="all">All Rigs</option>'+rigs.map(r=>`<option value="${r}">${r}</option>`).join('');
+  document.getElementById('filterDesignation').innerHTML='<option value="all">All Positions</option>'+desigs.map(d=>`<option value="${d}">${d}</option>`).join('');
+}
+
+function refreshAll(){renderOverstayTable();populateFilters();renderEmployees();populateEmpFilters();updateAutocompleteLists();}
+
+// ==================== INIT ====================
+// ==================== GOOGLE SHEETS SYNC ====================
+let gsUrl = '';
+let syncInProgress = false;
+
+function loadGsUrl() {
+  gsUrl = localStorage.getItem('aeco_gs_url') || '';
+  if (gsUrl) document.getElementById('syncStatusBtn').classList.remove('hidden');
+}
+
+function setSyncStatus(state, msg) {
+  const btn   = document.getElementById('syncStatusBtn');
+  const icon  = document.getElementById('syncIcon');
+  const label = document.getElementById('syncLabel');
+  if (state === 'syncing') {
+    icon.className  = 'fas fa-spinner fa-spin';
+    label.textContent = 'Syncing…';
+    btn.className = btn.className.replace('bg-emerald-600 hover:bg-emerald-700','bg-yellow-500 hover:bg-yellow-600');
+  } else if (state === 'ok') {
+    icon.className  = 'fas fa-cloud-check';
+    label.textContent = 'Synced ✓';
+    btn.className = btn.className.replace('bg-yellow-500 hover:bg-yellow-600','bg-emerald-600 hover:bg-emerald-700');
+    setTimeout(()=>{ label.textContent='Sync'; icon.className='fas fa-cloud-upload-alt'; },3000);
+  } else if (state === 'error') {
+    icon.className  = 'fas fa-cloud-exclamation';
+    label.textContent = 'Sync Error';
+    btn.className = btn.className.replace('bg-yellow-500 hover:bg-yellow-600','bg-red-600 hover:bg-red-700');
+    setTimeout(()=>{ label.textContent='Sync'; icon.className='fas fa-cloud-upload-alt'; btn.className=btn.className.replace('bg-red-600 hover:bg-red-700','bg-emerald-600 hover:bg-emerald-700'); },5000);
+  }
+}
+
+async function gsCall(params, isPost = false, body = null) {
+  if (!gsUrl) return null;
+  try {
+    if (isPost) {
+      const res = await fetch(gsUrl, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'text/plain' } // GAS needs text/plain for POST
+      });
+      return await res.json();
+    } else {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch(`${gsUrl}?${qs}`);
+      return await res.json();
+    }
+  } catch (e) {
+    console.error('GS call failed:', e);
+    return { ok: false, error: e.message };
+  }
+}
+
+// Push all data to Google Sheet
+async function syncToSheet() {
+  if (!gsUrl || syncInProgress) return;
+  syncInProgress = true;
+  setSyncStatus('syncing');
+  // Ensure every record has an _id
+  overstayRecords.forEach(r  => { if (!r._id)  r._id  = crypto.randomUUID(); });
+  employeeMaster.forEach(e   => { if (!e._id)  e._id  = crypto.randomUUID(); });
+  const result = await gsCall(null, true, {
+    action: 'syncAll',
+    overstays:  overstayRecords,
+    employees:  employeeMaster
+  });
+  syncInProgress = false;
+  if (result && result.ok) {
+    setSyncStatus('ok');
+    showToast('Synced to Google Sheets ✓');
+    // NOTE: do NOT call saveToLocalStorage/saveEmployees here — would cause infinite sync loop
+  } else {
+    setSyncStatus('error');
+    showToast('Sync failed: ' + (result ? result.error : 'Network error'), 'error');
+  }
+}
+
+// Pull all data from Google Sheet
+async function pullFromSheet() {
+  if (!gsUrl) return;
+  setSyncStatus('syncing');
+  const result = await gsCall({ action: 'getAll' });
+  if (result && result.ok) {
+    if (result.overstays  && result.overstays.length)  { overstayRecords  = result.overstays;  saveToLocalStorage(); }
+    if (result.employees  && result.employees.length)  { employeeMaster   = result.employees;  saveEmployees(); }
+    if (result.audit      && result.audit.length)       { auditLog         = result.audit;      localStorage.setItem('aeco_audit_v1', JSON.stringify(auditLog)); }
+    refreshAll();
+    setSyncStatus('ok');
+    showToast(`Pulled ${overstayRecords.length} overstays + ${employeeMaster.length} employees from Sheet`);
+  } else {
+    setSyncStatus('error');
+    showToast('Pull failed: ' + (result ? result.error : 'Network error'), 'error');
+  }
+}
+
+// Auto-sync after every save
+const _origSaveToLocalStorage = saveToLocalStorage;
+function saveToLocalStorage() {
+  localStorage.setItem('aeco_overstay_pro_v3', JSON.stringify(overstayRecords));
+  if (gsUrl && !syncInProgress) {
+    clearTimeout(window._syncTimer);
+    window._syncTimer = setTimeout(syncToSheet, 1500); // debounce 1.5s
+  }
+}
+const _origSaveEmployees = saveEmployees;
+function saveEmployees() {
+  localStorage.setItem('aeco_employees_v1', JSON.stringify(employeeMaster));
+  if (gsUrl && !syncInProgress) {
+    clearTimeout(window._syncTimer);
+    window._syncTimer = setTimeout(syncToSheet, 1500);
+  }
+}
+
+// Settings: wire up sheet buttons
+document.getElementById('settingsSheetUrl').addEventListener('input', function() {
+  gsUrl = this.value.trim();
+});
+
+document.getElementById('testSheetBtn').addEventListener('click', async () => {
+  const url = document.getElementById('settingsSheetUrl').value.trim();
+  if (!url) return;
+  const msg = document.getElementById('sheetStatusMsg');
+  msg.className = 'mt-2 text-xs text-blue-600'; msg.textContent = '⏳ Testing connection…'; msg.classList.remove('hidden');
+  const tmpUrl = gsUrl; gsUrl = url;
+  const result = await gsCall({ action: 'ping' });
+  gsUrl = tmpUrl;
+  if (result && result.ok) {
+    msg.className = 'mt-2 text-xs text-green-600'; msg.textContent = '✅ ' + result.message;
+  } else {
+    msg.className = 'mt-2 text-xs text-red-600'; msg.textContent = '❌ Failed: ' + (result ? result.error : 'Network error');
+  }
+});
+
+document.getElementById('syncNowBtn').addEventListener('click', async () => {
+  const url = document.getElementById('settingsSheetUrl').value.trim();
+  if (!url) { showToast('Enter a Web App URL first', 'error'); return; }
+  gsUrl = url;
+  document.getElementById('settingsModal').classList.add('hidden');
+  document.getElementById('settingsModal').classList.remove('flex');
+  await syncToSheet();
+});
+
+document.getElementById('pullFromSheetBtn').addEventListener('click', async () => {
+  const url = document.getElementById('settingsSheetUrl').value.trim();
+  if (!url) { showToast('Enter a Web App URL first', 'error'); return; }
+  gsUrl = url;
+  document.getElementById('settingsModal').classList.add('hidden');
+  document.getElementById('settingsModal').classList.remove('flex');
+  await pullFromSheet();
+});
+
+// Patch Settings save to persist the URL
+const _origSaveSettings = saveSettings;
+function saveSettings() {
+  settings.gsUrl = gsUrl;
+  localStorage.setItem('aeco_settings', JSON.stringify(settings));
+}
+const _origLoadSettings = loadSettings;
+function loadSettings() {
+  const s = localStorage.getItem('aeco_settings');
+  if (s) { settings = { ...settings, ...JSON.parse(s) }; gsUrl = settings.gsUrl || ''; }
+}
+
+// ==================== END GOOGLE SHEETS ====================
+
+// ==================== FIREBASE REAL-TIME ENGINE ====================
+let firebaseDb       = null;
+let fbConnected      = false;
+let _fbWriting       = false;   // prevent our own writes from triggering the listener
+const _sessionId     = crypto.randomUUID();  // unique per browser tab
+
+/* ---------- UI helpers ---------- */
+function setFbStatus(state, msg) {
+  const el   = document.getElementById('fbLiveIndicator');
+  const dot  = el.querySelector('.live-dot');
+  const text = document.getElementById('fbLiveText');
+  if (state === 'connected') {
+    el.className = 'fb-live connected';
+    dot.className = 'live-dot green';
+    text.textContent = msg || '🔴 LIVE';
+  } else if (state === 'connecting') {
+    el.className = 'fb-live connecting';
+    dot.className = 'live-dot yellow';
+    text.textContent = msg || 'Connecting…';
+  } else {
+    el.className = 'fb-live disconnected';
+    dot.className = 'live-dot red';
+    text.textContent = msg || 'Not Connected';
+  }
+}
+
+function showFbMsg(text, ok=true) {
+  const el = document.getElementById('firebaseStatusMsg');
+  el.className = `mt-2 text-xs ${ok ? 'text-green-600' : 'text-red-600'}`;
+  el.textContent = text;
+  el.classList.remove('hidden');
+}
+
+/* ---------- Init Firebase ---------- */
+function initFirebase(dbUrl) {
+  if (!dbUrl) return;
+  try {
+    // If already initialised, delete and re-init
+    if (firebase.apps.length) {
+      firebase.apps.forEach(app => app.delete());
+    }
+    firebase.initializeApp({ databaseURL: dbUrl });
+    firebaseDb = firebase.database();
+
+    // Connection state listener
+    firebaseDb.ref('.info/connected').on('value', snap => {
+      fbConnected = snap.val() === true;
+      setFbStatus(fbConnected ? 'connected' : 'connecting',
+                  fbConnected ? `🔴 LIVE  •  Session ${_sessionId.slice(0,6)}` : 'Reconnecting…');
+    });
+
+    // Real-time overstay listener
+    firebaseDb.ref('overstays').on('value', snap => {
+      if (_fbWriting) return;          // ignore our own write echo
+      const data = snap.val();
+      if (!data) return;
+      const incoming = Array.isArray(data) ? data : Object.values(data);
+      if (JSON.stringify(incoming) === JSON.stringify(overstayRecords)) return;
+      overstayRecords = incoming;
+      localStorage.setItem('aeco_overstay_pro_v3', JSON.stringify(overstayRecords));
+      refreshAll();
+      showToast('🔄 Overstay data updated by another user', 'warn');
+    });
+
+    // Real-time employees listener
+    firebaseDb.ref('employees').on('value', snap => {
+      if (_fbWriting) return;
+      const data = snap.val();
+      if (!data) return;
+      const incoming = Array.isArray(data) ? data : Object.values(data);
+      if (JSON.stringify(incoming) === JSON.stringify(employeeMaster)) return;
+      employeeMaster = incoming;
+      localStorage.setItem('aeco_employees_v1', JSON.stringify(employeeMaster));
+      renderEmployees();
+      updateAutocompleteLists();
+      showToast('🔄 Employee data updated by another user', 'warn');
+    });
+
+    setFbStatus('connecting');
+    console.log('Firebase initialised:', dbUrl);
+  } catch(e) {
+    setFbStatus('disconnected', 'Error — check URL');
+    console.error('Firebase init error:', e);
+  }
+}
+
+/* ---------- Write to Firebase ---------- */
+function fbPush() {
+  if (!firebaseDb || !fbConnected) return;
+  _fbWriting = true;
+  const payload = {
+    overstays:  overstayRecords,
+    employees:  employeeMaster,
+    _by:        _sessionId,
+    _at:        Date.now()
+  };
+  firebaseDb.ref('overstays').set(overstayRecords)
+    .then(() => firebaseDb.ref('employees').set(employeeMaster))
+    .then(() => {
+      setTimeout(() => { _fbWriting = false; }, 1500);
+    })
+    .catch(err => {
+      _fbWriting = false;
+      showToast('Firebase write error: ' + err.message, 'error');
+    });
+}
+
+/* ---------- Patch save functions to also write to Firebase ---------- */
+const _baseSaveRecords   = saveToLocalStorage;
+const _baseSaveEmployees = saveEmployees;
+
+function saveToLocalStorage() {
+  localStorage.setItem('aeco_overstay_pro_v3', JSON.stringify(overstayRecords));
+  fbPush();
+  // GAS sync (debounced)
+  if (gsUrl && !syncInProgress) {
+    clearTimeout(window._syncTimer);
+    window._syncTimer = setTimeout(syncToSheet, 1500);
+  }
+}
+function saveEmployees() {
+  localStorage.setItem('aeco_employees_v1', JSON.stringify(employeeMaster));
+  fbPush();
+  if (gsUrl && !syncInProgress) {
+    clearTimeout(window._syncTimer);
+    window._syncTimer = setTimeout(syncToSheet, 1500);
+  }
+}
+
+/* ---------- Settings UI wiring ---------- */
+document.getElementById('testFirebaseBtn').addEventListener('click', async () => {
+  const url = document.getElementById('settingsFirebaseUrl').value.trim();
+  if (!url) { showFbMsg('❌ Please enter a Firebase URL first', false); return; }
+  showFbMsg('⏳ Testing connection…', true);
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/.json?shallow=true`);
+    if (res.ok) {
+      showFbMsg('✅ Connection successful! Firebase is reachable.', true);
+    } else {
+      showFbMsg(`❌ HTTP ${res.status} — check the URL or database rules`, false);
+    }
+  } catch(e) {
+    showFbMsg('❌ Could not reach Firebase — check URL', false);
+  }
+});
+
+document.getElementById('saveFirebaseBtn').addEventListener('click', () => {
+  const url = document.getElementById('settingsFirebaseUrl').value.trim();
+  if (!url) { showFbMsg('❌ Please paste your Firebase Database URL', false); return; }
+  localStorage.setItem('aeco_firebase_url', url);
+  initFirebase(url);
+  showFbMsg('✅ Firebase connected! Real-time sync is active.', true);
+  showToast('🔥 Firebase connected — real-time sync ON ✓');
+});
+
+document.getElementById('pushToFirebaseBtn').addEventListener('click', () => {
+  if (!firebaseDb) { showFbMsg('❌ Connect Firebase first', false); return; }
+  _fbWriting = false;  // force push regardless
+  fbPush();
+  showFbMsg(`✅ Pushed ${overstayRecords.length} overstays + ${employeeMaster.length} employees`, true);
+  showToast('📤 All data pushed to Firebase ✓');
+});
+
+/* ---------- Auto-load Firebase on startup ---------- */
+const _savedFbUrl = localStorage.getItem('aeco_firebase_url');
+if (_savedFbUrl) {
+  setFbStatus('connecting', 'Connecting…');
+  initFirebase(_savedFbUrl);
+  // Pre-fill the settings field
+  setTimeout(() => {
+    const el = document.getElementById('settingsFirebaseUrl');
+    if (el) el.value = _savedFbUrl;
+  }, 100);
+}
+
+// ==================== END FIREBASE ====================
+
+loadSettings();loadGsUrl();loadGeminiKey();loadFromLocalStorage();loadEmployees();loadAuditLog();
+if(localStorage.getItem('aecoDarkMode')==='true'){document.documentElement.classList.add('dark');document.getElementById('darkModeText').textContent='Light';}
+if(gsUrl){document.getElementById('settingsSheetUrl').value=gsUrl;document.getElementById('syncStatusBtn').classList.remove('hidden');}
+refreshAll();switchTab('overstay');
+</script>
+</body>
+</html>
