@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AECO Overstay Pro v6 | Multi-User Real-Time</title>
+  <title>AECO Overstay Pro v7 | Multi-User Real-Time</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -13,7 +13,6 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <style>
     :root { --accent:#2563eb; }
     * { box-sizing:border-box; }
@@ -180,89 +179,26 @@
 </head>
 <body class="bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
 
-<!-- ==================== SETUP WIZARD ==================== -->
-<div id="setupWizard" class="auth-screen hidden">
-  <div class="auth-card">
-    <div class="auth-header">
-      <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
-        <i class="fas fa-fire text-white text-2xl"></i>
-      </div>
-      <h2 class="text-white font-display font-bold text-xl">First Time Setup</h2>
-      <p class="text-white/70 text-xs mt-1">Connect your Firebase database — takes 2 minutes</p>
-    </div>
-    <div class="p-6 space-y-4">
-      <div class="bg-orange-50 border border-orange-200 rounded-xl p-3 text-xs text-orange-800">
-        <p class="font-bold mb-1.5">📋 Before you start, in Firebase Console:</p>
-        <ol class="list-decimal ml-4 space-y-1">
-          <li>Go to <strong>console.firebase.google.com</strong> → your project</li>
-          <li><strong>Realtime Database</strong> → copy the URL shown at top</li>
-          <li><strong>Authentication</strong> → Sign-in method → enable <strong>Email/Password</strong></li>
-        </ol>
-      </div>
-      <div>
-        <label class="block text-xs font-bold mb-1.5 text-zinc-700">Firebase Database URL <span class="text-red-500">*</span></label>
-        <input id="wizardFbUrl" type="url" class="auth-input" placeholder="https://your-project-default-rtdb.firebaseio.com">
-      </div>
-      <div id="wizardMsg" class="hidden text-xs p-2.5 rounded-lg"></div>
-      <button class="auth-btn auth-btn-primary" onclick="wizardConnect()">
-        <i class="fas fa-plug mr-2"></i> Test & Connect
-      </button>
-      <p class="text-center text-xs text-zinc-400 mt-2">This is a one-time setup. Other users don't need to do this.</p>
-    </div>
-  </div>
-</div>
-
-<!-- ==================== LOGIN SCREEN ==================== -->
-<div id="loginScreen" class="auth-screen hidden">
+<!-- ==================== NAME PROMPT (first visit only) ==================== -->
+<div id="namePrompt" class="auth-screen hidden">
   <div class="auth-card">
     <div class="auth-header">
       <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
         <i class="fa-solid fa-oil-can text-white text-2xl"></i>
       </div>
       <h2 class="text-white font-display font-bold text-xl">AECO Overstay Pro</h2>
-      <p class="text-white/70 text-xs mt-1">Sign in to access the system</p>
+      <p class="text-white/70 text-xs mt-1">Enter your name to get started</p>
     </div>
-    <div class="p-6">
-      <!-- Login form -->
-      <div id="loginForm">
-        <!-- Firebase connection status shown on login screen -->
-        <div id="loginFbStatus" class="mb-3 text-xs p-2.5 rounded-lg bg-amber-50 text-amber-700 hidden">
-          <i class="fas fa-circle-notch fa-spin mr-1"></i> Connecting to Firebase…
-          <button onclick="retryFirebase()" class="ml-2 underline font-bold">Retry</button>
-        </div>
-        <div class="space-y-3 mb-4">
-          <input id="loginEmail" type="email" class="auth-input" placeholder="Email address">
-          <div class="relative">
-            <input id="loginPassword" type="password" class="auth-input pr-10" placeholder="Password">
-            <button type="button" onclick="togglePwd('loginPassword',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"><i class="fas fa-eye text-xs"></i></button>
-          </div>
-        </div>
-        <div id="loginMsg" class="hidden text-xs p-2.5 rounded-lg mb-3"></div>
-        <button class="auth-btn auth-btn-primary" onclick="doLogin()"><i class="fas fa-sign-in-alt mr-2"></i> Sign In</button>
-        <button class="auth-btn auth-btn-secondary" onclick="showRegister()">Create New Account</button>
-        <div class="mt-3 text-center">
-          <button onclick="clearFbAndResetup()" class="text-xs text-zinc-400 hover:text-zinc-600 underline">Change Firebase URL</button>
-        </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="block text-xs font-bold mb-1.5 text-zinc-700">Your Name <span class="text-red-500">*</span></label>
+        <input id="userNameInput" type="text" class="auth-input" placeholder="e.g. Ahmed Al-Rashidi" autofocus>
       </div>
-      <!-- Register form -->
-      <div id="registerForm" class="hidden">
-        <!-- Firebase connection status shown on register screen -->
-        <div id="regFbStatus" class="mb-3 text-xs p-2.5 rounded-lg bg-amber-50 text-amber-700 hidden">
-          <i class="fas fa-circle-notch fa-spin mr-1"></i> Connecting to Firebase…
-          <button onclick="retryFirebase()" class="ml-2 underline font-bold">Retry</button>
-        </div>
-        <div class="space-y-3 mb-4">
-          <input id="regName" type="text" class="auth-input" placeholder="Full Name">
-          <input id="regEmail" type="email" class="auth-input" placeholder="Email address">
-          <div class="relative">
-            <input id="regPassword" type="password" class="auth-input pr-10" placeholder="Password (min 6 characters)">
-            <button type="button" onclick="togglePwd('regPassword',this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"><i class="fas fa-eye text-xs"></i></button>
-          </div>
-        </div>
-        <div id="regMsg" class="hidden text-xs p-2.5 rounded-lg mb-3"></div>
-        <button class="auth-btn auth-btn-primary" onclick="doRegister()"><i class="fas fa-user-plus mr-2"></i> Create Account</button>
-        <button class="auth-btn auth-btn-secondary" onclick="showLogin()">← Back to Sign In</button>
-      </div>
+      <div id="namePromptMsg" class="hidden text-xs p-2.5 rounded-lg"></div>
+      <button class="auth-btn auth-btn-primary" onclick="submitName()">
+        <i class="fas fa-arrow-right mr-2"></i> Enter App
+      </button>
+      <p class="text-center text-xs text-zinc-400">Your name is shown to other online users</p>
     </div>
   </div>
 </div>
@@ -271,18 +207,17 @@
 <div id="onlineBar" class="online-bar hidden no-print">
   <div class="flex items-center gap-1.5 shrink-0">
     <i class="fas fa-users text-xs text-zinc-400"></i>
-    <span class="text-xs font-bold text-zinc-500 uppercase tracking-wide">Online</span>
+    <span class="text-xs font-bold text-zinc-500 uppercase tracking-wide">Online Now</span>
   </div>
   <div id="onlineUsersContainer" class="flex items-center gap-1.5 flex-wrap"></div>
   <div class="ml-auto flex items-center gap-3">
     <span id="lastUpdatePill" class="last-update-pill hidden"><i class="fas fa-clock mr-1"></i><span id="lastUpdateText">—</span></span>
-    <span id="currentUserBadge" class="text-xs text-zinc-400 flex items-center gap-1.5">
-      <i class="fas fa-user-circle"></i>
-      <span id="currentUserName">—</span>
-      <span id="currentUserRole" class="role-viewer">viewer</span>
+    <span class="text-xs text-zinc-500 flex items-center gap-1.5">
+      <i class="fas fa-user-circle text-indigo-400"></i>
+      <span id="currentUserName" class="font-semibold text-indigo-600 dark:text-indigo-400">—</span>
     </span>
-    <button onclick="doLogout()" class="text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-1">
-      <i class="fas fa-sign-out-alt"></i> Logout
+    <button onclick="changeName()" class="text-xs text-zinc-400 hover:text-zinc-600 flex items-center gap-1 transition">
+      <i class="fas fa-edit"></i> Change Name
     </button>
   </div>
 </div>
@@ -296,7 +231,7 @@
         <span class="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
           <i class="fa-solid fa-oil-can text-white text-lg"></i>
         </span>
-        AECO Overstay Pro <span class="text-blue-500 text-lg font-normal ml-1">v6</span>
+        AECO Overstay Pro <span class="text-blue-500 text-lg font-normal ml-1">v7</span>
       </h1>
       <p class="text-zinc-500 dark:text-zinc-400 mt-1 ml-14 text-sm flex items-center gap-3">
         Rig Overstay Intelligence • Payment Tracking • AI Analytics
@@ -330,7 +265,6 @@
     <button id="tabInsights"    class="tab-btn px-5 py-3 whitespace-nowrap">🤖 AI Insights</button>
     <button id="tabNotifications" class="tab-btn px-5 py-3 whitespace-nowrap relative">🔔 Alerts <span id="notifTabBadge" class="hidden ml-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"></span></button>
     <button id="tabAudit"       class="tab-btn px-5 py-3 whitespace-nowrap">📝 Audit Log</button>
-    <button id="tabUsers"       class="tab-btn px-5 py-3 whitespace-nowrap hidden">👥 Users</button>
   </div>
 
   <!-- ==================== DASHBOARD PANEL ==================== -->
@@ -2653,18 +2587,21 @@ function loadSettings() {
 
 // ==================== END GOOGLE SHEETS ====================
 
-// ==================== FIREBASE + AUTH + PRESENCE ENGINE v6 ====================
-let firebaseDb   = null;
-let firebaseAuth = null;
-let fbConnected  = false;
-let _fbWriting   = false;
-let currentUser  = null;
-let currentUserRole = 'viewer';
-const _sessionId = crypto.randomUUID();
+
+// ==================== FIREBASE REAL-TIME ENGINE v7 (No Login) ====================
+const FB_URL      = 'https://aec-overstay-default-rtdb.firebaseio.com';
+let   firebaseDb  = null;
+let   fbConnected = false;
+let   _fbWriting  = false;
+const _sessionId  = crypto.randomUUID();
 const AVATAR_COLORS = ['#2563eb','#7c3aed','#db2777','#059669','#d97706','#dc2626','#0891b2','#65a30d'];
 
-// ─── UI helpers ───────────────────────────────────────────────────
-function setFbStatus(state, msg){
+// ─── Avatar helpers ───────────────────────────────────────────────
+function avatarColor(name){ let h=0; for(const c of(name||'?')) h=(h*31+c.charCodeAt(0))%AVATAR_COLORS.length; return AVATAR_COLORS[h]; }
+function avatarInitials(name){ if(!name)return '?'; const p=name.trim().split(' '); return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():name.slice(0,2).toUpperCase(); }
+
+// ─── Live status bar ─────────────────────────────────────────────
+function setFbStatus(state,msg){
   const el=document.getElementById('fbLiveIndicator');
   const dot=el.querySelector('.live-dot');
   const text=document.getElementById('fbLiveText');
@@ -2672,95 +2609,33 @@ function setFbStatus(state, msg){
   else if(state==='connecting'){el.className='fb-live connecting';dot.className='live-dot yellow';text.textContent=msg||'Connecting…';}
   else{el.className='fb-live disconnected';dot.className='live-dot red';text.textContent=msg||'Not Connected';}
 }
-function showFbMsg(text,ok=true){const el=document.getElementById('firebaseStatusMsg');el.className=`mt-2 text-xs ${ok?'text-green-600':'text-red-600'}`;el.textContent=text;el.classList.remove('hidden');}
-function showAuthMsg(id,text,ok=true){const el=document.getElementById(id);el.className=`text-xs p-2.5 rounded-lg mb-3 ${ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700'}`;el.textContent=text;el.classList.remove('hidden');}
-function togglePwd(id,btn){const inp=document.getElementById(id);inp.type=inp.type==='password'?'text':'password';btn.innerHTML=`<i class="fas fa-eye${inp.type==='text'?'-slash':''} text-xs"></i>`;}
-
-function avatarColor(name){let h=0;for(const c of(name||'?'))h=(h*31+c.charCodeAt(0))%AVATAR_COLORS.length;return AVATAR_COLORS[h];}
-function avatarInitials(name){if(!name)return '?';const p=name.trim().split(' ');return p.length>1?(p[0][0]+p[p.length-1][0]).toUpperCase():name.slice(0,2).toUpperCase();}
-
-// ─── Login/Register UI ────────────────────────────────────────────
-function showLogin(){document.getElementById('loginForm').classList.remove('hidden');document.getElementById('registerForm').classList.add('hidden');document.getElementById('loginMsg').classList.add('hidden');}
-function showRegister(){document.getElementById('registerForm').classList.remove('hidden');document.getElementById('loginForm').classList.add('hidden');document.getElementById('regMsg').classList.add('hidden');}
-
-async function doLogin(){
-  if(!firebaseAuth){
-    showAuthMsg('loginMsg','Firebase not connected yet. Click Retry above.',false);
-    retryFirebase();
-    return;
-  }
-  const email=document.getElementById('loginEmail').value.trim();
-  const pwd=document.getElementById('loginPassword').value;
-  if(!email||!pwd){showAuthMsg('loginMsg','Please enter email and password',false);return;}
-  try{
-    document.getElementById('loginMsg').className='text-xs p-2.5 rounded-lg mb-3 bg-blue-50 text-blue-700';
-    document.getElementById('loginMsg').textContent='Signing in…';
-    document.getElementById('loginMsg').classList.remove('hidden');
-    await firebaseAuth.signInWithEmailAndPassword(email,pwd);
-  }catch(e){
-    const msg=e.code==='auth/user-not-found'?'No account found with this email':
-              e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'?'Incorrect password':
-              e.message;
-    showAuthMsg('loginMsg',msg,false);
-  }
-}
-async function doRegister(){
-  if(!firebaseAuth){
-    showAuthMsg('regMsg','Firebase not connected yet. Click Retry above.',false);
-    retryFirebase();
-    return;
-  }
-  const name=document.getElementById('regName').value.trim();
-  const email=document.getElementById('regEmail').value.trim();
-  const pwd=document.getElementById('regPassword').value;
-  if(!name||!email||!pwd){showAuthMsg('regMsg','Please fill all fields',false);return;}
-  if(pwd.length<6){showAuthMsg('regMsg','Password must be at least 6 characters',false);return;}
-  try{
-    document.getElementById('regMsg').className='text-xs p-2.5 rounded-lg mb-3 bg-blue-50 text-blue-700';
-    document.getElementById('regMsg').textContent='Creating account…';
-    document.getElementById('regMsg').classList.remove('hidden');
-    const cred=await firebaseAuth.createUserWithEmailAndPassword(email,pwd);
-    await cred.user.updateProfile({displayName:name});
-    const usersSnap=await firebaseDb.ref('users').once('value');
-    const isFirst=!usersSnap.exists()||usersSnap.numChildren()===0;
-    await firebaseDb.ref(`users/${cred.user.uid}`).set({
-      name,email,role:isFirst?'admin':'viewer',createdAt:Date.now(),lastLogin:Date.now()
-    });
-  }catch(e){
-    const msg=e.code==='auth/email-already-in-use'?'Email already registered — please sign in instead.':e.message;
-    showAuthMsg('regMsg',msg,false);
-  }
-}
-async function doLogout(){
-  if(!confirm('Sign out?'))return;
-  if(currentUser&&firebaseDb){await firebaseDb.ref(`presence/${currentUser.uid}`).update({online:false,lastSeen:Date.now()});}
-  await firebaseAuth.signOut();
+function showFbMsg(text,ok=true){
+  const el=document.getElementById('firebaseStatusMsg');
+  if(!el)return;
+  el.className=`mt-2 text-xs ${ok?'text-green-600':'text-red-600'}`;
+  el.textContent=text; el.classList.remove('hidden');
 }
 
-// ─── Role enforcement ─────────────────────────────────────────────
-function applyRoleUI(role){
-  currentUserRole=role||'viewer';
-  const isAdmin=role==='admin';
-  const canEdit=isAdmin||role==='editor';
-  // Show/hide write buttons
-  ['addRecordBtn','importOverstayBtn','addEmpBtn','importEmpBtn','bulkApprove','bulkMarkPaid','bulkDelete','resetDataBtn'].forEach(id=>{
-    const el=document.getElementById(id);if(el)el.style.display=canEdit?'':'none';
-  });
-  // Delete/reset only for admin
-  ['resetDataBtn'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=isAdmin?'':'none';});
-  // Users tab only admin
-  const usersTab=document.getElementById('tabUsers');
-  if(usersTab)usersTab.classList.toggle('hidden',!isAdmin);
-  // Role badge in bar
-  const badge=document.getElementById('currentUserRole');
-  if(badge){badge.textContent=role;badge.className=`role-${role}`;}
+// ─── Last Updated ─────────────────────────────────────────────────
+function setLastUpdated(by,at){
+  const pill=document.getElementById('lastUpdatePill');
+  const text=document.getElementById('lastUpdateText');
+  if(!pill||!text)return;
+  pill.classList.remove('hidden');
+  const diff=Date.now()-at;
+  const ago=diff<60000?'just now':diff<3600000?Math.round(diff/60000)+'m ago':diff<86400000?Math.round(diff/3600000)+'h ago':Math.round(diff/86400000)+'d ago';
+  text.textContent=`Updated ${ago} by ${by||'someone'}`;
+}
+function recordUpdate(){
+  if(!firebaseDb||!fbConnected)return;
+  const name=localStorage.getItem('aeco_username')||'Unknown';
+  firebaseDb.ref('meta/lastUpdate').set({by:name,at:Date.now()});
 }
 
-// ─── Presence system ──────────────────────────────────────────────
-function setupPresence(user,name){
-  const presRef=firebaseDb.ref(`presence/${user.uid}`);
-  const myData={name,email:user.email,online:true,lastSeen:Date.now(),sessionId:_sessionId};
-  presRef.set(myData);
+// ─── Presence system (no auth) ────────────────────────────────────
+function setupPresence(name){
+  const presRef=firebaseDb.ref(`presence/${_sessionId}`);
+  presRef.set({name,online:true,lastSeen:Date.now()});
   presRef.onDisconnect().update({online:false,lastSeen:Date.now()});
 
   firebaseDb.ref('presence').on('value',snap=>{
@@ -2769,325 +2644,173 @@ function setupPresence(user,name){
     bar.innerHTML='';
     const pres=snap.val()||{};
     const onlineList=[],offlineList=[];
-    Object.entries(pres).forEach(([uid,p])=>{if(p.online)onlineList.push({uid,...p});else offlineList.push({uid,...p});});
-    // Online users (avatars)
+    Object.entries(pres).forEach(([id,p])=>{ if(p.online) onlineList.push(p); else offlineList.push(p); });
+
     onlineList.forEach(p=>{
-      const col=avatarColor(p.name);
-      const ini=avatarInitials(p.name);
-      const isMe=p.uid===user.uid;
-      bar.innerHTML+=`<div class="user-avatar" style="background:${col}" title="${p.name}${isMe?' (You)':''} — Online">
-        ${ini}<span class="u-online-ring"></span>
-      </div><span class="text-xs text-zinc-600 dark:text-zinc-300 font-medium">${p.name.split(' ')[0]}${isMe?' (You)':''}</span>`;
+      const isMe=p.name===name;
+      bar.innerHTML+=`
+        <div class="user-avatar" style="background:${avatarColor(p.name)};width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;color:white;position:relative;flex-shrink:0;"
+             title="${p.name}${isMe?' (You)':''}">
+          ${avatarInitials(p.name)}<span class="u-online-ring"></span>
+        </div>
+        <span class="text-xs font-medium text-zinc-600 dark:text-zinc-300">${p.name.split(' ')[0]}${isMe?' <span class=\'text-blue-400\'>(You)</span>':''}</span>`;
     });
-    // Offline users (greyed)
-    offlineList.slice(0,3).forEach(p=>{
-      const lastSeen=p.lastSeen?dayjs(p.lastSeen).fromNow():'a while ago';
-      bar.innerHTML+=`<div class="user-avatar opacity-40" style="background:${avatarColor(p.name)}" title="${p.name} — Offline (${lastSeen})">
-        ${avatarInitials(p.name)}<span class="u-offline-ring"></span>
-      </div>`;
+
+    offlineList.slice(0,4).forEach(p=>{
+      bar.innerHTML+=`
+        <div style="background:${avatarColor(p.name)};width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;color:white;position:relative;flex-shrink:0;opacity:.35;"
+             title="${p.name} — Offline">
+          ${avatarInitials(p.name)}<span class="u-offline-ring"></span>
+        </div>`;
     });
-    if(!bar.innerHTML)bar.innerHTML='<span class="text-xs text-zinc-400 italic">No other users online</span>';
+
+    if(!onlineList.length) bar.innerHTML='<span class="text-xs text-zinc-400 italic">Only you online</span>';
   });
 }
 
-// ─── Last Updated indicator ───────────────────────────────────────
-function setLastUpdated(by,at){
-  const pill=document.getElementById('lastUpdatePill');
-  const text=document.getElementById('lastUpdateText');
-  if(!pill||!text)return;
-  pill.classList.remove('hidden');
-  const time=at?dayjs(at).fromNow():'just now';
-  text.textContent=`Updated ${time} by ${by||'unknown'}`;
-}
-function recordUpdate(){
-  if(!firebaseDb||!currentUser)return;
-  firebaseDb.ref('meta/lastUpdate').set({by:currentUser.displayName||currentUser.email,at:Date.now()});
-}
-
-// ─── Users management (admin) ─────────────────────────────────────
-function renderUsersPanel(){
-  if(currentUserRole!=='admin')return;
-  const tbody=document.getElementById('usersTableBody');
-  const noMsg=document.getElementById('noUsersMsg');
-  if(!tbody)return;
-  firebaseDb.ref('users').once('value').then(snap=>{
-    const users=snap.val()||{};
-    const keys=Object.keys(users);
-    if(!keys.length){tbody.innerHTML='';noMsg.classList.remove('hidden');return;}
-    noMsg.classList.add('hidden');
-    firebaseDb.ref('presence').once('value').then(pSnap=>{
-      const pres=pSnap.val()||{};
-      tbody.innerHTML=keys.map(uid=>{
-        const u=users[uid];const p=pres[uid]||{};
-        const isOnline=p.online===true;
-        const roleCls=`role-${u.role||'viewer'}`;
-        const onlineDot=isOnline?'<span class="u-online-ring" style="position:static;display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;border:none;"></span>':'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#a1a1aa;"></span>';
-        const lastSeen=u.lastLogin?dayjs(u.lastLogin).fromNow():'—';
-        const joined=u.createdAt?new Date(u.createdAt).toLocaleDateString():'—';
-        const isMe=currentUser&&uid===currentUser.uid;
-        return `<tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800 transition text-xs">
-          <td class="px-4 py-3">
-            <div class="flex items-center gap-2">
-              <div class="user-avatar w-8 h-8 text-xs shrink-0" style="background:${avatarColor(u.name)};width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:700;">${avatarInitials(u.name)}</div>
-              <div>
-                <div class="font-semibold">${u.name||'—'}${isMe?' <span class="text-xs text-blue-500">(You)</span>':''}</div>
-              </div>
-            </div>
-          </td>
-          <td class="px-4 py-3 text-zinc-500">${u.email||'—'}</td>
-          <td class="px-4 py-3"><span class="${roleCls}">${u.role||'viewer'}</span></td>
-          <td class="px-4 py-3"><div class="flex items-center gap-1.5">${onlineDot}<span>${isOnline?'Online':'Offline'}</span></div></td>
-          <td class="px-4 py-3 text-zinc-400">${lastSeen}</td>
-          <td class="px-4 py-3 text-zinc-400">${joined}</td>
-          <td class="px-4 py-3 text-center no-print">
-            ${isMe?'<span class="text-zinc-300 text-xs">You</span>':`
-              <select onchange="changeUserRole('${uid}',this.value)" class="form-input py-1 text-xs w-28">
-                <option ${u.role==='admin'?'selected':''} value="admin">👑 Admin</option>
-                <option ${u.role==='editor'?'selected':''} value="editor">✏️ Editor</option>
-                <option ${u.role==='viewer'?'selected':''} value="viewer">👁️ Viewer</option>
-              </select>`}
-          </td>
-        </tr>`;
-      }).join('');
-    });
-  });
-}
-window.changeUserRole=function(uid,role){
-  if(!firebaseDb||currentUserRole!=='admin')return;
-  firebaseDb.ref(`users/${uid}/role`).set(role).then(()=>{
-    showToast(`Role updated to ${role} ✓`);
-    renderUsersPanel();
-  });
-};
-
-// ─── Auth state handler ───────────────────────────────────────────
-function onAuthStateChanged(user){
-  if(user){
-    currentUser=user;
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('onlineBar').classList.remove('hidden');
-    document.getElementById('currentUserName').textContent=user.displayName||user.email;
-    // Load role
-    firebaseDb.ref(`users/${user.uid}`).on('value',snap=>{
-      const data=snap.val()||{};
-      currentUserRole=data.role||'viewer';
-      applyRoleUI(currentUserRole);
-      // Update last login
-      firebaseDb.ref(`users/${user.uid}/lastLogin`).set(Date.now());
-    });
-    // Setup presence
-    setupPresence(user,user.displayName||user.email);
-    // Listen for last update
-    firebaseDb.ref('meta/lastUpdate').on('value',snap=>{
-      const d=snap.val();if(d)setLastUpdated(d.by,d.at);
-    });
-    // Listen for role changes to current user
-    firebaseDb.ref(`users/${user.uid}/role`).on('value',snap=>{
-      if(snap.val())applyRoleUI(snap.val());
-    });
-  }else{
-    currentUser=null;
-    document.getElementById('loginScreen').classList.remove('hidden');
-    document.getElementById('onlineBar').classList.add('hidden');
-    applyRoleUI('viewer');
+// ─── Name prompt ──────────────────────────────────────────────────
+function submitName(){
+  const val=document.getElementById('userNameInput').value.trim();
+  if(!val){ 
+    const msg=document.getElementById('namePromptMsg');
+    msg.className='text-xs p-2.5 rounded-lg bg-red-50 text-red-700';
+    msg.textContent='Please enter your name';
+    msg.classList.remove('hidden');
+    return;
   }
+  localStorage.setItem('aeco_username',val);
+  document.getElementById('namePrompt').classList.add('hidden');
+  document.getElementById('onlineBar').classList.remove('hidden');
+  document.getElementById('currentUserName').textContent=val;
+  setupPresence(val);
 }
 
-// ─── Setup wizard ─────────────────────────────────────────────────
-async function wizardConnect(){
-  const url=document.getElementById('wizardFbUrl').value.trim();
-  const msg=document.getElementById('wizardMsg');
-  if(!url){msg.className='text-xs p-2.5 rounded-lg bg-red-50 text-red-700';msg.textContent='Please enter your Firebase Database URL';msg.classList.remove('hidden');return;}
-  msg.className='text-xs p-2.5 rounded-lg bg-blue-50 text-blue-700';msg.textContent='⏳ Testing connection…';msg.classList.remove('hidden');
-  try{
-    const res=await fetch(`${url.replace(/\/$/,'')}/.json?shallow=true`);
-    if(!res.ok)throw new Error(`HTTP ${res.status}`);
-    localStorage.setItem('aeco_firebase_url',url);
-    msg.className='text-xs p-2.5 rounded-lg bg-green-50 text-green-700';msg.textContent='✅ Connected! Loading app…';
-    setTimeout(()=>{document.getElementById('setupWizard').classList.add('hidden');initFirebase(url);},800);
-  }catch(e){msg.className='text-xs p-2.5 rounded-lg bg-red-50 text-red-700';msg.textContent='❌ Cannot reach Firebase. Check the URL and try again.';}
-}
-
-// ─── Init Firebase (full) ─────────────────────────────────────────
-function initFirebase(dbUrl){
-  if(!dbUrl)return;
-  try{
-    // Safe init: only call initializeApp once
-    if(!firebase.apps.length){
-      firebase.initializeApp({databaseURL:dbUrl});
-    }
-    firebaseDb   = firebase.database();
-    firebaseAuth = firebase.auth();
-
-    // Connection status
-    firebaseDb.ref('.info/connected').on('value',snap=>{
-      fbConnected=snap.val()===true;
-      setFbStatus(fbConnected?'connected':'connecting',fbConnected?`🔴 LIVE`:'Reconnecting…');
-    });
-
-    // Real-time overstay listener (from other users)
-    firebaseDb.ref('overstays').on('value',snap=>{
-      if(_fbWriting)return;
-      const data=snap.val();if(!data)return;
-      const incoming=Array.isArray(data)?data:Object.values(data);
-      if(JSON.stringify(incoming)===JSON.stringify(overstayRecords))return;
-      overstayRecords=incoming;
-      localStorage.setItem('aeco_overstay_pro_v3',JSON.stringify(overstayRecords));
-      refreshAll();showToast('🔄 Records updated by another user','warn');
-    });
-
-    // Real-time employees listener
-    firebaseDb.ref('employees').on('value',snap=>{
-      if(_fbWriting)return;
-      const data=snap.val();if(!data)return;
-      const incoming=Array.isArray(data)?data:Object.values(data);
-      if(JSON.stringify(incoming)===JSON.stringify(employeeMaster))return;
-      employeeMaster=incoming;
-      localStorage.setItem('aeco_employees_v1',JSON.stringify(employeeMaster));
-      renderEmployees();updateAutocompleteLists();
-      showToast('🔄 Employees updated by another user','warn');
-    });
-
-    // Auth state watcher
-    firebaseAuth.onAuthStateChanged(onAuthStateChanged);
-    setFbStatus('connecting');
-    console.log('✅ Firebase + Auth initialized');
-  }catch(e){
-    setFbStatus('disconnected','Error — check URL');
-    console.error('Firebase init error:',e);
-    // Try recovering existing instances
-    try{
-      firebaseDb=firebase.database();
-      firebaseAuth=firebase.auth();
-      firebaseAuth.onAuthStateChanged(onAuthStateChanged);
-    }catch(e2){ console.error('Recovery failed:',e2); }
+function changeName(){
+  const newName=prompt('Enter your new name:',localStorage.getItem('aeco_username')||'');
+  if(!newName||!newName.trim())return;
+  localStorage.setItem('aeco_username',newName.trim());
+  document.getElementById('currentUserName').textContent=newName.trim();
+  // Update presence
+  if(firebaseDb&&fbConnected){
+    firebaseDb.ref(`presence/${_sessionId}`).update({name:newName.trim()});
   }
+  showToast('Name updated ✓');
 }
 
-// ─── Write to Firebase ────────────────────────────────────────────
+// ─── Firebase write ───────────────────────────────────────────────
 function fbPush(){
   if(!firebaseDb||!fbConnected)return;
   _fbWriting=true;
   recordUpdate();
   firebaseDb.ref('overstays').set(overstayRecords)
     .then(()=>firebaseDb.ref('employees').set(employeeMaster))
-    .then(()=>{setTimeout(()=>{_fbWriting=false;},1500);})
-    .catch(e=>{_fbWriting=false;showToast('Firebase error: '+e.message,'error');});
+    .then(()=>{ setTimeout(()=>{ _fbWriting=false; },1500); })
+    .catch(e=>{ _fbWriting=false; console.error('FB write error:',e); });
 }
 
 // ─── Patch save functions ─────────────────────────────────────────
 function saveToLocalStorage(){
   localStorage.setItem('aeco_overstay_pro_v3',JSON.stringify(overstayRecords));
   fbPush();
-  if(gsUrl&&!syncInProgress){clearTimeout(window._syncTimer);window._syncTimer=setTimeout(syncToSheet,1500);}
+  if(gsUrl&&!syncInProgress){ clearTimeout(window._syncTimer); window._syncTimer=setTimeout(syncToSheet,1500); }
 }
 function saveEmployees(){
   localStorage.setItem('aeco_employees_v1',JSON.stringify(employeeMaster));
   fbPush();
-  if(gsUrl&&!syncInProgress){clearTimeout(window._syncTimer);window._syncTimer=setTimeout(syncToSheet,1500);}
+  if(gsUrl&&!syncInProgress){ clearTimeout(window._syncTimer); window._syncTimer=setTimeout(syncToSheet,1500); }
 }
 
-// ─── Settings UI ──────────────────────────────────────────────────
-document.getElementById('testFirebaseBtn').addEventListener('click',async()=>{
-  const url=document.getElementById('settingsFirebaseUrl').value.trim();
-  if(!url){showFbMsg('❌ Enter a Firebase URL first',false);return;}
+// ─── Init Firebase ────────────────────────────────────────────────
+function initFirebase(){
+  try{
+    if(!firebase.apps.length){
+      firebase.initializeApp({databaseURL:FB_URL});
+    }
+    firebaseDb=firebase.database();
+
+    // Connection state
+    firebaseDb.ref('.info/connected').on('value',snap=>{
+      fbConnected=snap.val()===true;
+      setFbStatus(fbConnected?'connected':'connecting', fbConnected?'🔴 LIVE':'Reconnecting…');
+    });
+
+    // Live overstay sync
+    firebaseDb.ref('overstays').on('value',snap=>{
+      if(_fbWriting)return;
+      const data=snap.val();
+      if(!data)return;
+      const incoming=Array.isArray(data)?data:Object.values(data);
+      if(JSON.stringify(incoming)===JSON.stringify(overstayRecords))return;
+      overstayRecords=incoming;
+      localStorage.setItem('aeco_overstay_pro_v3',JSON.stringify(overstayRecords));
+      refreshAll();
+      showToast('🔄 Data updated by another user','warn');
+    });
+
+    // Live employee sync
+    firebaseDb.ref('employees').on('value',snap=>{
+      if(_fbWriting)return;
+      const data=snap.val();
+      if(!data)return;
+      const incoming=Array.isArray(data)?data:Object.values(data);
+      if(JSON.stringify(incoming)===JSON.stringify(employeeMaster))return;
+      employeeMaster=incoming;
+      localStorage.setItem('aeco_employees_v1',JSON.stringify(employeeMaster));
+      renderEmployees(); updateAutocompleteLists();
+      showToast('🔄 Employees updated by another user','warn');
+    });
+
+    // Last updated listener
+    firebaseDb.ref('meta/lastUpdate').on('value',snap=>{
+      const d=snap.val(); if(d) setLastUpdated(d.by,d.at);
+    });
+
+    console.log('✅ Firebase connected to',FB_URL);
+  }catch(e){
+    setFbStatus('disconnected','Error');
+    console.error('Firebase error:',e);
+  }
+}
+
+// ─── Settings Firebase buttons ────────────────────────────────────
+const _testFbBtn=document.getElementById('testFirebaseBtn');
+if(_testFbBtn) _testFbBtn.addEventListener('click',async()=>{
   showFbMsg('⏳ Testing…');
-  try{const r=await fetch(`${url.replace(/\/$/,'')}/.json?shallow=true`);r.ok?showFbMsg('✅ Connected successfully!'):showFbMsg(`❌ HTTP ${r.status}`,false);}
-  catch(e){showFbMsg('❌ Cannot reach Firebase',false);}
+  try{ const r=await fetch(`${FB_URL}/.json?shallow=true`); r.ok?showFbMsg('✅ Connected!'):showFbMsg(`❌ HTTP ${r.status}`,false); }
+  catch(e){ showFbMsg('❌ Cannot reach Firebase',false); }
 });
-document.getElementById('saveFirebaseBtn').addEventListener('click',()=>{
-  const url=document.getElementById('settingsFirebaseUrl').value.trim();
-  if(!url){showFbMsg('❌ Enter URL first',false);return;}
-  localStorage.setItem('aeco_firebase_url',url);
-  initFirebase(url);showFbMsg('✅ Firebase connected!');showToast('🔥 Firebase live ✓');
-});
-document.getElementById('pushToFirebaseBtn').addEventListener('click',()=>{
-  if(!firebaseDb){showFbMsg('❌ Connect Firebase first',false);return;}
-  _fbWriting=false;fbPush();showFbMsg(`✅ Pushed ${overstayRecords.length} overstays + ${employeeMaster.length} employees`);
-});
-
-// ─── Users tab switch ─────────────────────────────────────────────
-document.getElementById('tabUsers').addEventListener('click',()=>{switchTab('users');renderUsersPanel();});
+const _saveFbBtn=document.getElementById('saveFirebaseBtn');
+if(_saveFbBtn) _saveFbBtn.addEventListener('click',()=>{ showFbMsg('✅ Firebase URL is hardcoded in v7 — always connected!'); });
+const _pushFbBtn=document.getElementById('pushToFirebaseBtn');
+if(_pushFbBtn) _pushFbBtn.addEventListener('click',()=>{ _fbWriting=false; fbPush(); showFbMsg(`✅ Pushed ${overstayRecords.length} records + ${employeeMaster.length} employees`); showToast('📤 All data pushed ✓'); });
 
 // ─── Startup ──────────────────────────────────────────────────────
-// ─── Retry & Reset helpers ────────────────────────────────────────
-function retryFirebase(){
-  const url=localStorage.getItem('aeco_firebase_url');
-  if(!url){ clearFbAndResetup(); return; }
-  ['loginFbStatus','regFbStatus'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-blue-50 text-blue-700'; el.innerHTML='<i class="fas fa-circle-notch fa-spin mr-1"></i> Retrying connection…'; el.classList.remove('hidden'); }
-  });
-  initFirebase(url);
-  // Check after 3s if auth loaded
-  setTimeout(()=>{
-    if(firebaseAuth){
-      ['loginFbStatus','regFbStatus'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-green-50 text-green-700'; el.innerHTML='✅ Connected! You can now sign in.'; }
-      });
-    } else {
-      ['loginFbStatus','regFbStatus'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-red-50 text-red-700'; el.innerHTML='❌ Still not connected. <button onclick="clearFbAndResetup()" class="underline font-bold ml-1">Re-enter Firebase URL</button>'; }
-      });
-    }
-  },3000);
-}
-function clearFbAndResetup(){
-  localStorage.removeItem('aeco_firebase_url');
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('setupWizard').classList.remove('hidden');
+// Init Firebase immediately (URL is hardcoded)
+initFirebase();
+
+// Check if user has a saved name
+const _savedName = localStorage.getItem('aeco_username');
+if(_savedName){
+  // Known user — go straight to app
+  document.getElementById('namePrompt').classList.add('hidden');
+  document.getElementById('onlineBar').classList.remove('hidden');
+  document.getElementById('currentUserName').textContent=_savedName;
+  // Setup presence after Firebase connects
+  setTimeout(()=>{ if(fbConnected||firebaseDb) setupPresence(_savedName); },2000);
+} else {
+  // First visit — ask for name
+  document.getElementById('namePrompt').classList.remove('hidden');
+  document.getElementById('onlineBar').classList.add('hidden');
 }
 
-// ─── Startup ──────────────────────────────────────────────────────
-const _savedFbUrl=localStorage.getItem('aeco_firebase_url');
-if(_savedFbUrl){
-  // URL already saved - show login immediately then connect Firebase
-  document.getElementById('setupWizard').classList.add('hidden');
-  document.getElementById('loginScreen').classList.remove('hidden');
-  // Show connecting status on login screen
-  ['loginFbStatus','regFbStatus'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el){ el.classList.remove('hidden'); }
-  });
-  // Initialize Firebase immediately (no delay)
-  initFirebase(_savedFbUrl);
-  // After 4 seconds check if connected and update status
-  setTimeout(()=>{
-    if(firebaseAuth){
-      ['loginFbStatus','regFbStatus'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-green-50 text-green-700'; el.innerHTML='✅ Firebase connected — ready to sign in.'; setTimeout(()=>el.classList.add('hidden'),2000); }
-      });
-    } else {
-      ['loginFbStatus','regFbStatus'].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el){ el.className='mb-3 text-xs p-2.5 rounded-lg bg-red-50 text-red-700'; el.innerHTML='❌ Firebase not connected. <button onclick="retryFirebase()" class="underline font-bold ml-1">Retry</button> or <button onclick="clearFbAndResetup()" class="underline font-bold ml-1">Re-enter URL</button>'; }
-      });
-    }
-  },4000);
-  // Pre-fill settings field
-  setTimeout(()=>{ const el=document.getElementById('settingsFirebaseUrl'); if(el) el.value=_savedFbUrl; },500);
-}else{
-  // First time — show setup wizard
-  document.getElementById('setupWizard').classList.remove('hidden');
-  document.getElementById('loginScreen').classList.add('hidden');
-}
+// Also allow pressing Enter on name input
+document.getElementById('userNameInput').addEventListener('keydown',e=>{ if(e.key==='Enter') submitName(); });
 
-// ─── dayjs fromNow plugin (inline) ────────────────────────────────
-(function(){const units=[{l:'s',r:44,p:'second'},{l:'m',r:89},{l:'mm',r:44,p:'minute'},{l:'h',r:89},{l:'hh',r:21,p:'hour'},{l:'d',r:35},{l:'dd',r:25,p:'day'},{l:'M',r:45},{l:'MM',r:10,p:'month'},{l:'y',r:17},{l:'yy',p:'year'}];dayjs.extend((o,c,d)=>{c.prototype.fromNow=function(){const diff=dayjs().diff(this,'second');if(diff<5)return 'just now';if(diff<60)return `${diff}s ago`;if(diff<3600)return `${Math.round(diff/60)}m ago`;if(diff<86400)return `${Math.round(diff/3600)}h ago`;return `${Math.round(diff/86400)}d ago`;};});})();
-
-// ─── Also wire switchTab for users ────────────────────────────────
-const _origSwitchTab=switchTab;
-
-// ==================== END FIREBASE v6 ====================
+// ==================== END FIREBASE v7 ====================
 
 loadSettings();loadGsUrl();loadGeminiKey();loadFromLocalStorage();loadEmployees();loadAuditLog();
 if(localStorage.getItem('aecoDarkMode')==='true'){document.documentElement.classList.add('dark');document.getElementById('darkModeText').textContent='Light';}
 if(gsUrl){document.getElementById('settingsSheetUrl').value=gsUrl;document.getElementById('syncStatusBtn').classList.remove('hidden');}
-// Show login screen initially (Firebase will hide it on auth)
-if(_savedFbUrl){document.getElementById('loginScreen').classList.remove('hidden');}
 refreshAll();switchTab('overstay');
 </script>
 </body>
